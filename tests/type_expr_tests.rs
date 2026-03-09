@@ -1,11 +1,10 @@
+use crate::common::{expr, expr_u, sig};
 use maplit::hashset;
 use nodety::{
     demo_type::DemoType,
     scope::{LocalParamID, Scope, ScopePointer, type_parameter::TypeParameter},
     type_expr::{TypeExpr, subtyping::SupertypeResult},
 };
-
-use crate::common::{expr, sig};
 
 mod common;
 
@@ -177,4 +176,15 @@ fn test_operation_supertypes() {
 fn test_never_bounded_param_supertype_of_self() {
     let a = expr("<#0 extends Never>(#0) -> ()");
     assert!(a.supertype_of_naive(&a).is_supertype());
+}
+
+/// See tsReference.ts IntersectionOfUnions
+#[test]
+fn test_intersection_of_unions() {
+    let a = expr("({ a: Integer } | { b: Integer }) & ({ c: String } | { d: Boolean })");
+    let normalized = a.normalize_naive().try_into_unscoped().unwrap();
+    let expected = expr_u(
+        "({ a: Integer, c: String } | { a: Integer, d: Boolean }) | ({ b: Integer, c: String } | { b: Integer, d: Boolean })",
+    );
+    assert_eq!(expected, normalized);
 }

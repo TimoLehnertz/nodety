@@ -33,3 +33,9 @@ pub fn sig_u(input: &str) -> NodeSignature<DemoType, Unscoped> {
 pub fn expr(input: &str) -> ScopedTypeExpr<DemoType> {
     TypeExpr::from_str(input).expect(&format!("Failed to parse {input}"))
 }
+
+#[allow(dead_code)]
+#[track_caller]
+pub fn expr_u(input: &str) -> TypeExpr<DemoType, Unscoped> {
+    TypeExpr::from_str(input).expect(&format!("Failed to parse {input}"))
+}

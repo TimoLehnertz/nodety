@@ -52,3 +52,26 @@ type IntersectionIndexedDistributed = { a: { b: string } }["a"] &
 type Flatten<Type> = Type extends Array<infer Item> ? Item : Type;
 
 type A = Flatten<number[] | string[]>; // number
+
+/**
+ *  {
+ *      a: number;
+ *      c: string;
+ *  } | {
+ *      a: number;
+ *      d: boolean;
+ *  } | {
+ *      b: number;
+ *      c: string;
+ *  } | {
+ *      b: number;
+ *      d: boolean;
+ *  }
+ */
+type IntersectionOfUnions = Prettify<
+  ({ a: number } | { b: number }) & ({ c: string } | { d: boolean })
+>;
+
+type Prettify<T> = {
+  [K in keyof T]: T[K];
+} & {};
