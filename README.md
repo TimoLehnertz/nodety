@@ -32,7 +32,7 @@ nodety = "0.1"
 // here nodety infers that
 // T = Integer
 // U = String
-//                                            
+//
 // |- Array source -----------|               |- <T, U>Map ----------------|
 // |           Array<Integer> | ------------> | Array<T>          Array<U> |
 // |--------------------------|               |                            |
@@ -67,18 +67,24 @@ assert!(errors.is_empty());
 
 ## Cargo features
 
-| Feature | Default | Description |
-|---------|---------|-------------|
-| `parser` | yes | Parse signatures and type expressions from strings |
-| `serde` | no | Serialize / deserialize types with serde |
-| `json-schema` | no | JSON Schema generation via schemars |
-| `wasm` | no | wasm-bindgen support (enables `serde`) |
-| `tsify` | no | TypeScript type generation (enables `wasm`) |
-| `proptest` | no | `Arbitrary` impls for property testing |
+| Feature       | Default | Description                                        |
+| ------------- | ------- | -------------------------------------------------- |
+| `parser`      | yes     | Parse signatures and type expressions from strings |
+| `serde`       | no      | Serialize / deserialize types with serde           |
+| `json-schema` | no      | JSON Schema generation via schemars                |
+| `wasm`        | no      | wasm-bindgen support (enables `serde`)             |
+| `tsify`       | no      | TypeScript type generation (enables `wasm`)        |
+| `proptest`    | no      | `Arbitrary` impls for property testing             |
 
 ## Documentation
 
 See the [crate docs](https://docs.rs/nodety) for the full guide — types, scopes, notation, and more.
+
+## Contributing
+
+Found a bug? Please [open an issue](https://github.com/TimoLehnertz/nodety/issues) with a minimal reproduction. Including a failing test case is especially helpful and will speed up fixes.
+
+Feature requests and pull requests are also welcome.
 
 ## License
 
