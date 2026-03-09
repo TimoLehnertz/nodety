@@ -1,7 +1,17 @@
 use crate::type_expr::{ScopePortal, ScopedTypeExpr, TypeExpr, node_signature::NodeSignature};
 use std::{collections::BTreeMap, fmt::Debug};
 
+#[cfg(feature = "json-schema")]
+use schemars::JsonSchema;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+#[cfg(feature = "tsify")]
+use tsify::Tsify;
+
 /// Never type for operators.
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "json-schema", derive(JsonSchema))]
+#[cfg_attr(feature = "tsify", derive(Tsify))]
 #[derive(Clone, Debug, PartialEq)]
 pub enum NoOperator {
     // Never add a variant here!

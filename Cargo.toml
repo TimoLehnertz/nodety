@@ -41,4 +41,5 @@ rustversion = { version = "1.0.15", optional = true } # wasm-bindgen needs rustv
 [dev-dependencies]
 assert_matches = "1.5.0"
 maplit = "1.0.2"
-nodety = { path = ".", features = ["proptest"] }
+nodety = { path = ".", features = ["proptest", "serde"] }
+serde = { version = "1.0.225", features = ["derive", "std"] }
