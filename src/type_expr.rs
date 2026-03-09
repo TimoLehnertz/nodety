@@ -397,7 +397,7 @@ impl<T: Type> TypeExpr<T, ScopePortal<T>> {
                     return;
                 }
                 if let TypeExpr::TypeParameter(param, _infer) = type_expr {
-                    if !scope.is_inferred(param) {
+                    if scope.is_inferred(param) {
                         // If the param is inferred, self.traverse will look it up and call this walker again.
                         return;
                     }
