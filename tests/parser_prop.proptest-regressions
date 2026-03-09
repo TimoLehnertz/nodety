@@ -1,0 +1,9 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc d42e3d265111e6d401bfe4caffb376700fe8d69108c231a9e57b87a428bf02f0 # shrinks to expr = NodeSignature(NodeSignature { parameters: {}, inputs: PortTypes(PortTypes { ports: [], varg: None }), outputs: PortTypes(PortTypes { ports: [], varg: None }), default_input_types: {}, tags: None, required_tags: {} })
+cc 60b91e53874a6a38d97aa669a80b8c9c8c3d6eb81f20edd1ade8b453b7d1d5fd # shrinks to expr = NodeSignature(NodeSignature { parameters: {}, inputs: Type(Atom), outputs: PortTypes(PortTypes { ports: [], varg: None }), default_input_types: {}, tags: None, required_tags: {} })
+cc fe6d0b052a0adc35bbc2f295f639044913e2b12fcc2070e07aab46d54f027bc5 # shrinks to expr = Conditional(Conditional { t_test: NodeSignature(NodeSignature { parameters: {}, inputs: PortTypes(PortTypes { ports: [], varg: None }), outputs: PortTypes(PortTypes { ports: [Any], varg: None }), default_input_types: {}, tags: None, required_tags: {} }), t_test_bound: Any, t_then: Any, t_else: Any, infer: {} })

@@ -1,0 +1,48 @@
+[package]
+name = "nodety"
+version = "0.1.0"
+edition = "2024"
+publish = true
+license = "MIT OR Apache-2.0"
+description = "Easy to use library for node editor types, generics, inference and validation"
+repository = "https://github.com/TimoLehnertz/nodety"
+readme = "README.md"
+keywords = [
+    "node",
+    "graph",
+    "types",
+    "generics",
+    "inference",
+    "validation",
+    "typescript",
+    "node editor",
+    "visual",
+]
+categories = ["wasm", "web-programming"]
+
+[features]
+default = ["parser"]
+parser = ["dep:nom"]
+serde = ["dep:serde"]
+json-schema = ["dep:schemars"]
+wasm = ["dep:wasm-bindgen", "serde"]
+tsify = ["dep:tsify", "wasm"]
+proptest = ["dep:proptest"]
+
+[dependencies]
+petgraph = { version = "0.8.3", features = [
+    "stable_graph",
+], default-features = false }
+serde = { version = "1.0.225", features = [
+    "derive",
+], default-features = false, optional = true }
+schemars = { version = "0.9.0", optional = true } # Must stay at 0.9.0 to be compatible with aide.
+tsify = { version = "0.5.6", optional = true }
+wasm-bindgen = { version = "0.2.105", optional = true }
+nom = { version = "8.0.0", optional = true }
+proptest = { version = "1.10.0", optional = true }
+
+[dev-dependencies]
+assert_matches = "1.5.0"
+maplit = "1.0.2"
+nodety = { path = ".", features = ["proptest"] }
