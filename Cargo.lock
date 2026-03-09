@@ -238,6 +238,7 @@ dependencies = [
  "nom",
  "petgraph",
  "proptest",
+ "rustversion",
  "schemars",
  "serde",
  "tsify",
