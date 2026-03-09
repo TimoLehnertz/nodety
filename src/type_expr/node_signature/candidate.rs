@@ -5,7 +5,7 @@ use crate::{
 };
 
 /// A candidate for a type parameter.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Candidate<T: Type> {
     /// The type of the candidate.
     pub t: ScopedTypeExpr<T>,

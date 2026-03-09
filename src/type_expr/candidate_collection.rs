@@ -58,24 +58,23 @@ impl<T: Type> TypeExpr<T, ScopePortal<T>> {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use crate::notation::parse::expr;
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::notation::parse::{expr, scope};
+    use maplit::hashmap;
 
-//     #[test]
-//     fn test_collect_candidates() {
-//         let source = expr("Array<Integer>");
-//         let target = expr("Array<T>");
+    #[test]
+    fn test_collect_candidates() {
+        let source = expr("Array<Integer>");
+        let target = expr("Array<T>");
 
-//         let target_scope = Scope::new_root();
-//         target_scope
+        let target_scope = ScopePointer::new(scope("<T>"));
+        let source_scope = ScopePointer::new_root();
 
-//         let candidates = target.collect_candidates(
-//             &source,
-//             &ScopePointer::new_root(),
-//             &ScopePointer::new_root(),
-//             false,
-//         );
-//     }
-// }
+        let candidates = target.collect_candidates(&source, &target_scope, &source_scope, false, false);
+
+        let expected = hashmap! { GlobalParameterId { scope: target_scope, local_id: "T".into() } => vec![Candidate { t: expr("Integer"), scope: source_scope }]};
+        assert_eq!(expected, candidates);
+    }
+}
