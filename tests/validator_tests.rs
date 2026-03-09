@@ -4,9 +4,10 @@ use maplit::hashset;
 use nodety::{
     Nodety,
     demo_type::DemoType,
-    inference::InferenceConfig,
+    inference::{InferenceConfig, Scopes},
     validation::{ValidationError, ValidationErrorKind},
 };
+use std::collections::BTreeMap;
 
 mod common;
 
@@ -275,4 +276,13 @@ fn test_validate_multiple_edges_on_one_input() {
 
     let errors = nodety.validate(&nodety.infer(InferenceConfig::default()));
     assert!(errors.iter().any(|e| matches!(e.kind, ValidationErrorKind::MultipleEdgesOnOneInput)));
+}
+
+#[test]
+fn test_validate_empty_scopes() {
+    let engine = graph(vec![sig_u("() -> (Integer)"), sig_u("(Integer) -> ()")], vec![(0, 1, 0, 0)]);
+    let empty_scopes: Scopes<DemoType> = BTreeMap::new();
+    let errors = engine.validate(&empty_scopes);
+    assert!(!errors.is_empty(), "validation with empty scopes should produce errors");
+    assert!(errors.iter().any(|e| matches!(e.kind, ValidationErrorKind::InsufficientlyInferredTypes)));
 }

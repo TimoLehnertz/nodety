@@ -150,11 +150,19 @@ impl<T: Type> Nodety<T> {
             };
 
             let Some(source_scope) = scopes.get(&edge.source()) else {
+                errors.push(ValidationError {
+                    location: GraphLocation::Edge(edge.id().index()),
+                    kind: ValidationErrorKind::InsufficientlyInferredTypes,
+                });
                 continue;
-            }; // Should never fail
+            };
             let Some(target_scope) = scopes.get(&edge.target()) else {
+                errors.push(ValidationError {
+                    location: GraphLocation::Edge(edge.id().index()),
+                    kind: ValidationErrorKind::InsufficientlyInferredTypes,
+                });
                 continue;
-            }; // Should never fail
+            };
 
             match target_port.supertype_of_detailed(source_port, target_scope, source_scope) {
                 SupertypeResult::Supertype => (),
@@ -187,8 +195,12 @@ impl<T: Type> Nodety<T> {
                 };
 
                 let Some(scope) = scopes.get(&node_idx) else {
+                    errors.push(ValidationError {
+                        location: GraphLocation::InputPort { input_idx: *input_idx, node_idx: node_idx.index() },
+                        kind: ValidationErrorKind::InsufficientlyInferredTypes,
+                    });
                     continue;
-                }; // Should never fail
+                };
 
                 match port_type.supertype_of_detailed(default_type, scope, scope) {
                     SupertypeResult::Supertype => (), // all ok
