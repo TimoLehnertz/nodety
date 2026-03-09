@@ -253,41 +253,42 @@ impl Arbitrary for SIUnit {
 }
 
 /// Mutates an expression to be valid.
-/// Faster alternative to filtering invalid expressions.
+/// Faster alternative to filtering invalid expressions (But still quite inefficient).
 fn make_expr_valid<T: Type>(expr: TypeExpr<T>) -> TypeExpr<T> {
     let mut scoped: TypeExpr<T, ScopePortal<T>> = expr.into();
     let scope = ScopePointer::new_root();
-    scoped.traverse_mut(
-        &scope,
-        &mut |expr, scope, _is_tl_union| {
-            if let TypeExpr::TypeParameter(param_id, _infer) = expr {
-                if scope.lookup(param_id).is_some() {
-                    // Valid, keep
-                    return;
+
+    loop {
+        // When parameters change get cleared, they can't be referenced anymore so we need to revalidate again.
+        let mut params_cleared = false;
+        scoped.traverse_mut(
+            &scope,
+            &mut |expr, scope, _is_tl_union| {
+                if let TypeExpr::NodeSignature(sig) = expr
+                    && validate_type_parameters(&sig.parameters).is_err()
+                {
+                    sig.parameters.clear();
+                    params_cleared = true;
                 }
-                let all: Vec<_> = scope.all_defined().map(|(id, _)| id).collect();
-                if let Some(&picked) = all.get(param_id.0 as usize % all.len().max(1)) {
-                    *param_id = picked;
-                } else {
-                    // There is no param that it could reference.
-                    *expr = TypeExpr::Any;
+                if let TypeExpr::TypeParameter(param_id, _infer) = expr {
+                    if scope.lookup(param_id).is_some() {
+                        // Valid, keep
+                        return;
+                    }
+                    let all: Vec<_> = scope.all_defined().map(|(id, _)| id).collect();
+                    if let Some(&picked) = all.get(param_id.0 as usize % all.len().max(1)) {
+                        *param_id = picked;
+                    } else {
+                        // There is no param that it could reference.
+                        *expr = TypeExpr::Any;
+                    }
                 }
-            }
-        },
-        false,
-    );
-    // Second pass: the first traversal may have reassigned TypeParameter ids
-    // inside parameter bounds, potentially introducing self-referential cycles
-    scoped.traverse_mut(
-        &scope,
-        &mut |expr, _, _| {
-            if let TypeExpr::NodeSignature(sig) = expr
-                && validate_type_parameters(&sig.parameters).is_err()
-            {
-                sig.parameters.clear();
-            }
-        },
-        false,
-    );
+            },
+            false,
+        );
+        if !params_cleared {
+            break;
+        }
+    }
     scoped.map_scope_portals::<Unscoped>(&mut |_| unreachable!("Unscoped can't have scope portals."))
 }
