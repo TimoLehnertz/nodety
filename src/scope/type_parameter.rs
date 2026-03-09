@@ -19,10 +19,7 @@ use tsify::Tsify;
     ))
 )]
 #[cfg_attr(feature = "json-schema", derive(JsonSchema))]
-#[cfg_attr(
-    feature = "json-schema",
-    schemars(bound = "T: JsonSchema, T::Operator: JsonSchema, S: JsonSchema")
-)]
+#[cfg_attr(feature = "json-schema", schemars(bound = "T: JsonSchema, T::Operator: JsonSchema, S: JsonSchema"))]
 /// A generic type parameter with optional bound and default.
 #[cfg_attr(feature = "tsify", derive(Tsify))]
 pub struct TypeParameter<T: Type, S: TypeExprScope = Unscoped> {
@@ -44,9 +41,6 @@ impl<T: Type> TypeParameter<T, ScopePortal<T>> {
 
 impl<T: Type, S: TypeExprScope> Default for TypeParameter<T, S> {
     fn default() -> Self {
-        Self {
-            bound: None,
-            default: None,
-        }
+        Self { bound: None, default: None }
     }
 }

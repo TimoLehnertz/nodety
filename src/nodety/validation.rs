@@ -51,10 +51,7 @@ impl Default for GraphLocation {
     )
 )]
 #[cfg_attr(feature = "json-schema", derive(JsonSchema))]
-#[cfg_attr(
-    feature = "json-schema",
-    schemars(bound = "T: JsonSchema, T::Operator: JsonSchema")
-)]
+#[cfg_attr(feature = "json-schema", schemars(bound = "T: JsonSchema, T::Operator: JsonSchema"))]
 #[cfg_attr(feature = "tsify", derive(Tsify))]
 pub enum ValidationErrorKind<T: Type> {
     /// The inferred type for a type parameter is no child type of the parameter bound
@@ -85,10 +82,7 @@ pub enum ValidationErrorKind<T: Type> {
     ))
 )]
 #[cfg_attr(feature = "json-schema", derive(JsonSchema))]
-#[cfg_attr(
-    feature = "json-schema",
-    schemars(bound = "T: JsonSchema, T::Operator: JsonSchema")
-)]
+#[cfg_attr(feature = "json-schema", schemars(bound = "T: JsonSchema, T::Operator: JsonSchema"))]
 /// A validation error with its location and kind.
 #[cfg_attr(feature = "tsify", derive(Tsify))]
 pub struct ValidationError<T: Type> {
@@ -183,10 +177,7 @@ impl<T: Type> Nodety<T> {
 
                 let TypeExpr::PortTypes(ports) = &node.signature.inputs else {
                     errors.push(ValidationError {
-                        location: GraphLocation::InputPort {
-                            node_idx: node_idx.index(),
-                            input_idx: *input_idx,
-                        },
+                        location: GraphLocation::InputPort { node_idx: node_idx.index(), input_idx: *input_idx },
                         kind: ValidationErrorKind::NonPortTypesIO,
                     });
                     continue;
@@ -202,17 +193,11 @@ impl<T: Type> Nodety<T> {
                 match port_type.supertype_of_detailed(default_type, scope, scope) {
                     SupertypeResult::Supertype => (), // all ok
                     SupertypeResult::Unrelated(d) => errors.push(ValidationError {
-                        location: GraphLocation::InputPort {
-                            node_idx: node_idx.index(),
-                            input_idx: *input_idx,
-                        },
+                        location: GraphLocation::InputPort { node_idx: node_idx.index(), input_idx: *input_idx },
                         kind: ValidationErrorKind::TypeMismatch(d),
                     }),
                     SupertypeResult::Unknown => errors.push(ValidationError {
-                        location: GraphLocation::InputPort {
-                            node_idx: node_idx.index(),
-                            input_idx: *input_idx,
-                        },
+                        location: GraphLocation::InputPort { node_idx: node_idx.index(), input_idx: *input_idx },
                         kind: ValidationErrorKind::InsufficientlyInferredTypes,
                     }),
                 }
@@ -245,23 +230,15 @@ impl<T: Type> Nodety<T> {
             // 2
             let TypeExpr::PortTypes(ports) = &node.signature.inputs else {
                 errors.push(ValidationError {
-                    location: GraphLocation::InputPort {
-                        node_idx: node_idx.index(),
-                        input_idx: 0,
-                    },
+                    location: GraphLocation::InputPort { node_idx: node_idx.index(), input_idx: 0 },
                     kind: ValidationErrorKind::NonPortTypesIO,
                 });
                 continue;
             };
             for (port_idx, _port_type) in ports.ports.iter().enumerate() {
-                if !populated.contains(&port_idx)
-                    && !node.signature.default_input_types.contains_key(&port_idx)
-                {
+                if !populated.contains(&port_idx) && !node.signature.default_input_types.contains_key(&port_idx) {
                     errors.push(ValidationError {
-                        location: GraphLocation::InputPort {
-                            node_idx: node_idx.index(),
-                            input_idx: port_idx,
-                        },
+                        location: GraphLocation::InputPort { node_idx: node_idx.index(), input_idx: port_idx },
                         kind: ValidationErrorKind::EdgeMissingOnInput,
                     });
                 }
@@ -271,23 +248,15 @@ impl<T: Type> Nodety<T> {
             if let Some(max) = populated.iter().max() {
                 let TypeExpr::PortTypes(input_ports) = &node.signature.inputs else {
                     errors.push(ValidationError {
-                        location: GraphLocation::InputPort {
-                            node_idx: node_idx.index(),
-                            input_idx: 0,
-                        },
+                        location: GraphLocation::InputPort { node_idx: node_idx.index(), input_idx: 0 },
                         kind: ValidationErrorKind::NonPortTypesIO,
                     });
                     continue;
                 };
                 for port_idx in (input_ports.ports.len())..=*max.min(&input_ports.max_len()) {
-                    if !populated.contains(&port_idx)
-                        && !node.signature.default_input_types.contains_key(&port_idx)
-                    {
+                    if !populated.contains(&port_idx) && !node.signature.default_input_types.contains_key(&port_idx) {
                         errors.push(ValidationError {
-                            location: GraphLocation::InputPort {
-                                node_idx: node_idx.index(),
-                                input_idx: port_idx,
-                            },
+                            location: GraphLocation::InputPort { node_idx: node_idx.index(), input_idx: port_idx },
                             kind: ValidationErrorKind::EdgeMissingOnInput,
                         });
                     }
@@ -320,12 +289,8 @@ impl<T: Type> Nodety<T> {
                 let Some(incoming_tags) = tags_cache.get(&edge_ref.source()).unwrap() else {
                     continue;
                 };
-                let missing_tags: HashSet<u32> = node
-                    .signature
-                    .required_tags
-                    .difference(incoming_tags)
-                    .copied()
-                    .collect();
+                let missing_tags: HashSet<u32> =
+                    node.signature.required_tags.difference(incoming_tags).copied().collect();
                 // if let Some(node_tags)
                 node_tags = node_tags.intersection(incoming_tags).copied().collect();
                 if !missing_tags.is_empty() {

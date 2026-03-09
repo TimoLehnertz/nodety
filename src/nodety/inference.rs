@@ -139,11 +139,7 @@ pub struct InferenceConfig<T: Type> {
 
 impl<T: Type> Default for InferenceConfig<T> {
     fn default() -> Self {
-        Self {
-            steps: InferenceStep::default_steps(),
-            restrictions: None,
-            stop_after: None,
-        }
+        Self { steps: InferenceStep::default_steps(), restrictions: None, stop_after: None }
     }
 }
 
@@ -190,25 +186,19 @@ impl<'a, T: Type> Flows<'a, T> {
                                 continue;
                             }
                         }
-                        all_candidates
-                            .entry(global_param_id)
-                            .or_insert_with(Vec::new)
-                            .extend(candidate);
+                        all_candidates.entry(global_param_id).or_insert_with(Vec::new).extend(candidate);
                     }
                 }
                 if !step.allow_uninferred {
                     for (_gid, candidates) in all_candidates.iter_mut() {
-                        candidates
-                            .retain(|candidate| !candidate.t.contains_uninferred(&candidate.scope));
+                        candidates.retain(|candidate| !candidate.t.contains_uninferred(&candidate.scope));
                     }
                 }
                 let mut progress = false;
 
                 // Candidate picking
                 for (global_id, mut candidates) in all_candidates {
-                    let Some((registered_param, param_scope)) =
-                        global_id.scope.lookup(&global_id.local_id)
-                    else {
+                    let Some((registered_param, param_scope)) = global_id.scope.lookup(&global_id.local_id) else {
                         continue;
                     };
                     if registered_param.is_inferred() {
@@ -216,23 +206,15 @@ impl<'a, T: Type> Flows<'a, T> {
                     }
 
                     candidates.retain(|candidate| {
-                        !candidate
-                            .t
-                            .references(&HashSet::from([global_id.clone()]), &candidate.scope)
+                        !candidate.t.references(&HashSet::from([global_id.clone()]), &candidate.scope)
                     });
-                    let Some(picked_candidate) = Candidate::pick_for_param(
-                        candidates,
-                        registered_param.parameter(),
-                        param_scope,
-                    ) else {
+                    let Some(picked_candidate) =
+                        Candidate::pick_for_param(candidates, registered_param.parameter(), param_scope)
+                    else {
                         continue;
                     };
                     if param_scope
-                        .infer(
-                            &global_id.local_id,
-                            picked_candidate.t.clone(),
-                            picked_candidate.scope,
-                        )
+                        .infer(&global_id.local_id, picked_candidate.t.clone(), picked_candidate.scope)
                         .is_ok()
                     {
                         // println!("inferred {:?} = {:#?}", global_id.local_id, picked_candidate.t);
@@ -318,9 +300,7 @@ impl<T: Type> Nodety<T> {
     pub fn infer(&self, config: InferenceConfig<T>) -> Scopes<T> {
         let scopes = self.build_scopes();
         let flows = self.collect_flows(&scopes);
-        let flows = Flows {
-            flows: flows.into_iter().map(|flow| flow.flow).collect(),
-        };
+        let flows = Flows { flows: flows.into_iter().map(|flow| flow.flow).collect() };
         flows.infer(config);
         scopes
     }
@@ -347,12 +327,10 @@ impl<T: Type> Nodety<T> {
                     continue;
                 };
 
-                let Some(source_port) = source_ports.get_port_type(edge.weight().source_port)
-                else {
+                let Some(source_port) = source_ports.get_port_type(edge.weight().source_port) else {
                     continue;
                 };
-                let Some(target_port) = target_ports.get_port_type(edge.weight().target_port)
-                else {
+                let Some(target_port) = target_ports.get_port_type(edge.weight().target_port) else {
                     continue;
                 };
 
@@ -370,10 +348,7 @@ impl<T: Type> Nodety<T> {
                         source_scope: ScopePointer::clone(source_scope),
                         target_scope: ScopePointer::clone(target_scope),
                     },
-                    source_location: FlowSourceLocation::Output(
-                        edge.source(),
-                        edge.weight().source_port,
-                    ),
+                    source_location: FlowSourceLocation::Output(edge.source(), edge.weight().source_port),
                     target_location: FlowTargetLocation {
                         node_idx: edge.target(),
                         input_idx: edge.weight().target_port,
@@ -407,10 +382,7 @@ impl<T: Type> Nodety<T> {
                         target_scope: ScopePointer::clone(scope),
                     },
                     source_location: FlowSourceLocation::DefaultType(node_idx, *input_idx),
-                    target_location: FlowTargetLocation {
-                        node_idx,
-                        input_idx: *input_idx,
-                    },
+                    target_location: FlowTargetLocation { node_idx, input_idx: *input_idx },
                 });
             }
         }

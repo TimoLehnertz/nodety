@@ -7,8 +7,7 @@ use crate::{
     scope::{LocalParamID, ScopePointer},
     r#type::Type,
     type_expr::{
-        ScopePortal, TypeExpr, TypeExprScope, TypeExprValidationError, Unscoped,
-        node_signature::NodeSignature,
+        ScopePortal, TypeExpr, TypeExprScope, TypeExprValidationError, Unscoped, node_signature::NodeSignature,
     },
 };
 use petgraph::dot::Dot;
@@ -54,25 +53,14 @@ pub struct Node<T: Type, S: TypeExprScope = Unscoped> {
 
 impl<T: Type> Node<T, Unscoped> {
     pub fn new(signature: NodeSignature<T, Unscoped>) -> Self {
-        Self {
-            signature,
-            parent: None,
-            type_hints: BTreeMap::new(),
-        }
+        Self { signature, parent: None, type_hints: BTreeMap::new() }
     }
 
     pub fn new_child(signature: NodeSignature<T, Unscoped>, parent: NodeIndex) -> Self {
-        Self {
-            signature,
-            parent: Some(parent),
-            type_hints: BTreeMap::new(),
-        }
+        Self { signature, parent: Some(parent), type_hints: BTreeMap::new() }
     }
 
-    pub fn with_type_hints(
-        self,
-        type_hints: BTreeMap<LocalParamID, TypeExpr<T, Unscoped>>,
-    ) -> Self {
+    pub fn with_type_hints(self, type_hints: BTreeMap<LocalParamID, TypeExpr<T, Unscoped>>) -> Self {
         Self { type_hints, ..self }
     }
 }
@@ -90,11 +78,7 @@ impl<T: Type> private::Sealed for NodeSignature<T, Unscoped> {}
 
 impl<T: Type> IntoNode<T> for NodeSignature<T, Unscoped> {
     fn into_node(self) -> Node<T, ScopePortal<T>> {
-        Node {
-            signature: self.into(),
-            parent: None,
-            type_hints: BTreeMap::new(),
-        }
+        Node { signature: self.into(), parent: None, type_hints: BTreeMap::new() }
     }
 }
 
@@ -103,22 +87,14 @@ impl<T: Type> IntoNode<T> for Node<T, Unscoped> {
         Node {
             signature: self.signature.into(),
             parent: self.parent,
-            type_hints: self
-                .type_hints
-                .into_iter()
-                .map(|(k, v)| (k, v.into()))
-                .collect(),
+            type_hints: self.type_hints.into_iter().map(|(k, v)| (k, v.into())).collect(),
         }
     }
 }
 
 impl<T: Type> Default for Node<T, Unscoped> {
     fn default() -> Self {
-        Node {
-            signature: NodeSignature::default(),
-            parent: None,
-            type_hints: BTreeMap::new(),
-        }
+        Node { signature: NodeSignature::default(), parent: None, type_hints: BTreeMap::new() }
     }
 }
 
@@ -127,22 +103,14 @@ impl<T: Type> From<Node<T, Unscoped>> for Node<T, ScopePortal<T>> {
         Node {
             signature: value.signature.into(),
             parent: value.parent,
-            type_hints: value
-                .type_hints
-                .into_iter()
-                .map(|(k, v)| (k, v.into()))
-                .collect(),
+            type_hints: value.type_hints.into_iter().map(|(k, v)| (k, v.into())).collect(),
         }
     }
 }
 
 impl<T: Type> From<NodeSignature<T, Unscoped>> for Node<T, ScopePortal<T>> {
     fn from(sig: NodeSignature<T, Unscoped>) -> Self {
-        Node {
-            signature: sig.into(),
-            parent: None,
-            type_hints: BTreeMap::new(),
-        }
+        Node { signature: sig.into(), parent: None, type_hints: BTreeMap::new() }
     }
 }
 
@@ -187,10 +155,7 @@ impl<T: Type> Nodety<T> {
 
     /// Creates an empty graph with estimated capacity.
     pub fn with_capacity(nodes: usize, edges: usize) -> Self {
-        Self {
-            program: StableDiGraph::with_capacity(nodes, edges),
-            children: BTreeMap::new(),
-        }
+        Self { program: StableDiGraph::with_capacity(nodes, edges), children: BTreeMap::new() }
     }
 
     /// Adds a node to the graph.
@@ -233,9 +198,7 @@ impl<T: Type> Nodety<T> {
         } else {
             ScopePointer::new_root()
         };
-        node.signature
-            .validate(&node_scope)
-            .map_err(NodetyError::TypeExprValidationError)?;
+        node.signature.validate(&node_scope).map_err(NodetyError::TypeExprValidationError)?;
 
         let parent = node.parent;
         let node_idx = self.program.add_node(node);
@@ -254,11 +217,7 @@ impl<T: Type> Nodety<T> {
     /// - if the parent was updated to a non existing node
     /// - if the new parent would create a cycle
     /// - if the node signature is invalid (See [NodeSignature::validate](crate::NodeSignature::validate))
-    pub fn update_node(
-        &mut self,
-        node_id: NodeIndex,
-        node: impl IntoNode<T>,
-    ) -> Result<(), NodetyError> {
+    pub fn update_node(&mut self, node_id: NodeIndex, node: impl IntoNode<T>) -> Result<(), NodetyError> {
         let node: Node<T, ScopePortal<T>> = node.into_node();
 
         if !self.program.contains_node(node_id) {
@@ -271,9 +230,7 @@ impl<T: Type> Nodety<T> {
             ScopePointer::new_root()
         };
 
-        node.signature
-            .validate(&node_scope)
-            .map_err(NodetyError::TypeExprValidationError)?;
+        node.signature.validate(&node_scope).map_err(NodetyError::TypeExprValidationError)?;
 
         if let Some(new_parent) = node.parent {
             if !self.program.contains_node(new_parent) {
@@ -320,14 +277,7 @@ impl<T: Type> Nodety<T> {
         source_port: usize,
         target_port: usize,
     ) -> EdgeIndex {
-        self.program.add_edge(
-            source,
-            target,
-            Edge {
-                source_port,
-                target_port,
-            },
-        )
+        self.program.add_edge(source, target, Edge { source_port, target_port })
     }
 
     /// Removes an edge and returns it if it existed.
@@ -400,15 +350,10 @@ mod tests {
         let root = system.add_node(sig_u("<T>() -> ()")).unwrap();
 
         // Add child with existing parent
-        let child = system
-            .add_node(Node::new_child(sig_u("(T) -> ()"), root))
-            .unwrap();
+        let child = system.add_node(Node::new_child(sig_u("(T) -> ()"), root)).unwrap();
 
         // Cannot remove root while it has children
-        assert!(matches!(
-            system.remove_node(root),
-            Err(NodetyError::NodeHasChildren)
-        ));
+        assert!(matches!(system.remove_node(root), Err(NodetyError::NodeHasChildren)));
 
         // Can remove leaf (child has no children)
         assert!(system.remove_node(child).is_ok());
@@ -422,19 +367,14 @@ mod tests {
 
         // NodeIndex::from(99) is a non-existent parent
         let bad_node = Node::new_child(sig_u("() -> ()"), NodeIndex::from(99));
-        assert!(matches!(
-            system.add_node(bad_node),
-            Err(NodetyError::ParentNotFound)
-        ));
+        assert!(matches!(system.add_node(bad_node), Err(NodetyError::ParentNotFound)));
     }
 
     #[test]
     fn test_no_cycle_on_update() {
         let mut system = Nodety::<DemoType>::new();
         let a = system.add_node(NodeSignature::default()).unwrap();
-        let b = system
-            .add_node(Node::new_child(NodeSignature::default(), a))
-            .unwrap();
+        let b = system.add_node(Node::new_child(NodeSignature::default(), a)).unwrap();
 
         // Making A's parent B would create cycle A -> B -> A
         assert!(matches!(

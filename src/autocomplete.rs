@@ -31,9 +31,7 @@ pub fn is_compatible<T: Type>(
     output_scope_pointer.infer_defaults();
     input_scope_pointer.infer_defaults();
 
-    input
-        .supertype_of(output, &input_scope_pointer, &output_scope_pointer)
-        .is_supertype()
+    input.supertype_of(output, &input_scope_pointer, &output_scope_pointer).is_supertype()
 }
 
 #[cfg(test)]
@@ -43,47 +41,17 @@ mod tests {
 
     #[test]
     fn test_is_compatible() {
-        assert!(is_compatible(
-            &expr("Any"),
-            &expr("Any"),
-            scope("<>"),
-            scope("<>")
-        ));
+        assert!(is_compatible(&expr("Any"), &expr("Any"), scope("<>"), scope("<>")));
 
-        assert!(is_compatible(
-            &expr("Integer"),
-            &expr("Any"),
-            scope("<>"),
-            scope("<>")
-        ));
+        assert!(is_compatible(&expr("Integer"), &expr("Any"), scope("<>"), scope("<>")));
 
-        assert!(!is_compatible(
-            &expr("Any"),
-            &expr("Integer"),
-            scope("<>"),
-            scope("<>")
-        ));
+        assert!(!is_compatible(&expr("Any"), &expr("Integer"), scope("<>"), scope("<>")));
 
-        assert!(is_compatible(
-            &expr("T"),
-            &expr("T"),
-            scope("<T>"),
-            scope("<T>")
-        ));
+        assert!(is_compatible(&expr("T"), &expr("T"), scope("<T>"), scope("<T>")));
 
-        assert!(is_compatible(
-            &expr("Array<T>"),
-            &expr("T"),
-            scope("<T>"),
-            scope("<T>")
-        ));
+        assert!(is_compatible(&expr("Array<T>"), &expr("T"), scope("<T>"), scope("<T>")));
 
-        assert!(is_compatible(
-            &expr("Array<T>"),
-            &expr("Array<T>"),
-            scope("<T>"),
-            scope("<T>")
-        ));
+        assert!(is_compatible(&expr("Array<T>"), &expr("Array<T>"), scope("<T>"), scope("<T>")));
 
         assert!(!is_compatible(
             &expr("T"),

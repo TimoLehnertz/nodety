@@ -55,10 +55,7 @@ impl ParsableType for SimpleType {
     }
 
     fn parse_operator(input: &str) -> IResult<&str, NoOperator> {
-        Err(nom::Err::Error(nom::error::Error::new(
-            input,
-            nom::error::ErrorKind::Tag,
-        )))
+        Err(nom::Err::Error(nom::error::Error::new(input, nom::error::ErrorKind::Tag)))
     }
 }
 
@@ -84,10 +81,7 @@ fn normalize_simple(expr: TypeExpr<SimpleType>) -> TypeExpr<SimpleType> {
                 sig.required_tags = HashSet::new();
                 sig.default_input_types.clear();
                 for field in [&mut sig.inputs, &mut sig.outputs] {
-                    if !matches!(
-                        field,
-                        TypeExpr::PortTypes(_) | TypeExpr::Any | TypeExpr::Never
-                    ) {
+                    if !matches!(field, TypeExpr::PortTypes(_) | TypeExpr::Any | TypeExpr::Never) {
                         *field = TypeExpr::PortTypes(Box::new(PortTypes::new()));
                     }
                 }
@@ -96,6 +90,5 @@ fn normalize_simple(expr: TypeExpr<SimpleType>) -> TypeExpr<SimpleType> {
         },
         false,
     );
-    scoped
-        .map_scope_portals::<Unscoped>(&mut |_| unreachable!("Unscoped can't have scope portals."))
+    scoped.map_scope_portals::<Unscoped>(&mut |_| unreachable!("Unscoped can't have scope portals."))
 }

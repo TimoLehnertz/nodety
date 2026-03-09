@@ -1,15 +1,10 @@
 use nodety::Nodety;
 use nodety::demo_type::DemoType;
-use nodety::type_expr::{
-    ScopePortal, ScopedTypeExpr, TypeExpr, Unscoped, node_signature::NodeSignature,
-};
+use nodety::type_expr::{ScopePortal, ScopedTypeExpr, TypeExpr, Unscoped, node_signature::NodeSignature};
 use std::str::FromStr;
 
 #[allow(dead_code)]
-pub fn graph(
-    nodes: Vec<NodeSignature<DemoType>>,
-    edges: Vec<(usize, usize, usize, usize)>,
-) -> Nodety<DemoType> {
+pub fn graph(nodes: Vec<NodeSignature<DemoType>>, edges: Vec<(usize, usize, usize, usize)>) -> Nodety<DemoType> {
     let mut nodety = Nodety::new();
     let mut node_ids = Vec::new();
     for node in nodes {

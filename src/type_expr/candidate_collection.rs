@@ -41,10 +41,7 @@ impl<T: Type> TypeExpr<T, ScopePortal<T>> {
                     // Don't collect candidates for already inferred parameters.
                     return;
                 }
-                let global_id = GlobalParameterId {
-                    scope: param_scope,
-                    local_id: *own_param,
-                };
+                let global_id = GlobalParameterId { scope: param_scope, local_id: *own_param };
                 if own_scope.lookup_global(&global_id).is_none() {
                     // The var either
                     // - references a non existing type param
@@ -54,10 +51,7 @@ impl<T: Type> TypeExpr<T, ScopePortal<T>> {
                 candidates
                     .entry(global_id)
                     .or_insert(Vec::new())
-                    .push(Candidate {
-                        t: source_type.clone(),
-                        scope: ScopePointer::clone(source_traversal_scope),
-                    });
+                    .push(Candidate { t: source_type.clone(), scope: ScopePointer::clone(source_traversal_scope) });
             },
         );
         candidates

@@ -80,9 +80,7 @@ impl<T: Type> TypeExpr<T, ScopePortal<T>> {
                 if a.is_never_forever(&scope) || b.is_never_forever(&scope) {
                     return Self::Never;
                 }
-                if let Some((intersection, intersection_scope)) =
-                    Self::intersection(a, b, &scope, &scope)
-                {
+                if let Some((intersection, intersection_scope)) = Self::intersection(a, b, &scope, &scope) {
                     intersection.normalize(&intersection_scope)
                 } else {
                     Self::Intersection(Box::new(a.normalize(&scope)), Box::new(b.normalize(&scope)))
@@ -108,15 +106,11 @@ impl<T: Type> TypeExpr<T, ScopePortal<T>> {
                 if parameters.is_empty() {
                     return Self::Type(inner.clone());
                 }
-                let mut normalized_params: BTreeMap<String, TypeExpr<T, ScopePortal<T>>> =
-                    BTreeMap::new();
+                let mut normalized_params: BTreeMap<String, TypeExpr<T, ScopePortal<T>>> = BTreeMap::new();
                 for (ident, param) in parameters {
                     normalized_params.insert(ident.clone(), param.normalize(&scope));
                 }
-                Self::Constructor {
-                    inner: inner.clone(),
-                    parameters: normalized_params,
-                }
+                Self::Constructor { inner: inner.clone(), parameters: normalized_params }
             }
 
             Self::NodeSignature(sig) => Self::NodeSignature(Box::new(sig.normalize(&scope))),
@@ -141,28 +135,21 @@ impl<T: Type> TypeExpr<T, ScopePortal<T>> {
                 index_type.normalize(&index_scope)
             }
 
-            Self::ScopePortal {
-                expr,
-                scope: ScopePortal { portal },
-            } => {
+            Self::ScopePortal { expr, scope: ScopePortal { portal } } => {
                 // Normalize beforehand so that `normalized_expr.contains_type_param` is checked after params got resolved.
                 let normalized_expr = expr.normalize(portal);
                 // If the portal teleports to the same scope as we're in already it has no effect and can be removed.
                 // if both the portal and the running scope are empty, it is also safe to say that it doesn't have an effect.
                 // If the running scope is not empty but the portal is not, the portal still blocks its contents from the outer scope
                 // And thus shouldn't be removed.
-                if portal == &scope
-                    || (portal.is_empty() && scope.is_empty())
-                    || !normalized_expr.contains_type_param()
+                if portal == &scope || (portal.is_empty() && scope.is_empty()) || !normalized_expr.contains_type_param()
                 {
                     // remove the portal
                     normalized_expr
                 } else {
                     Self::ScopePortal {
                         expr: Box::new(normalized_expr),
-                        scope: ScopePortal {
-                            portal: ScopePointer::clone(portal),
-                        },
+                        scope: ScopePortal { portal: ScopePointer::clone(portal) },
                     }
                 }
             }
@@ -187,9 +174,7 @@ mod tests {
         let scope = ScopePointer::new(scope);
         let expr = TypeExpr::<DemoType, _>::ScopePortal {
             expr: Box::new(TypeExpr::Any),
-            scope: ScopePortal {
-                portal: ScopePointer::clone(&scope),
-            },
+            scope: ScopePortal { portal: ScopePointer::clone(&scope) },
         };
         let normalized = expr.normalize(&scope);
         assert_eq!(normalized, TypeExpr::Any);
@@ -202,9 +187,7 @@ mod tests {
         let portal_scope = ScopePointer::new(portal_scope);
         let expr = TypeExpr::<DemoType, _>::ScopePortal {
             expr: Box::new(TypeExpr::TypeParameter(LocalParamID(0), true)),
-            scope: ScopePortal {
-                portal: ScopePointer::clone(&portal_scope),
-            },
+            scope: ScopePortal { portal: ScopePointer::clone(&portal_scope) },
         };
         let normalized = expr.normalize(&ScopePointer::new_root());
         assert_matches!(normalized, TypeExpr::ScopePortal { .. });

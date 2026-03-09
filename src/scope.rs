@@ -146,10 +146,7 @@ pub struct RegisteredTypeVar<T: Type> {
 impl<T: Type> RegisteredTypeVar<T> {
     /// # Arguments
     /// - `scope` (`&ScopePointer<T>`) - The scope in which this parameter is defined.
-    pub fn get_boundary<'a>(
-        &'a self,
-        scope: &ScopePointer<T>,
-    ) -> (Cow<'a, ScopedTypeExpr<T>>, ScopePointer<T>) {
+    pub fn get_boundary<'a>(&'a self, scope: &ScopePointer<T>) -> (Cow<'a, ScopedTypeExpr<T>>, ScopePointer<T>) {
         if let Some((inferred, inferred_scope)) = self.inferred.borrow().clone() {
             (Cow::Owned(inferred), inferred_scope)
         } else if let Some(bound) = &self.parameter.bound {
@@ -177,10 +174,7 @@ impl<T: Type> ScopePointer<T> {
     ///
     /// # Returns
     /// (parameter, the defining scope)
-    pub fn lookup<'b>(
-        &'b self,
-        parameter: &LocalParamID,
-    ) -> Option<(&'b RegisteredTypeVar<T>, &'b ScopePointer<T>)> {
+    pub fn lookup<'b>(&'b self, parameter: &LocalParamID) -> Option<(&'b RegisteredTypeVar<T>, &'b ScopePointer<T>)> {
         if let Some(local_type) = self.0.variables.get(parameter) {
             Some((local_type, self))
         } else if let Some(parent) = &self.parent {
@@ -204,16 +198,8 @@ impl<T: Type> ScopePointer<T> {
     }
 
     /// Returns the inferred type and scope for a parameter, or `None` if not inferred.
-    pub fn lookup_inferred(
-        &self,
-        parameter: &LocalParamID,
-    ) -> Option<(ScopedTypeExpr<T>, ScopePointer<T>)> {
-        let (
-            RegisteredTypeVar {
-                inferred: ref_cell, ..
-            },
-            _,
-        ) = self.lookup(parameter)?;
+    pub fn lookup_inferred(&self, parameter: &LocalParamID) -> Option<(ScopedTypeExpr<T>, ScopePointer<T>)> {
+        let (RegisteredTypeVar { inferred: ref_cell, .. }, _) = self.lookup(parameter)?;
         let (inferred, inferred_scope) = ref_cell.borrow().clone()?;
         Some((inferred, inferred_scope))
     }
@@ -233,10 +219,7 @@ impl<T: Type> ScopePointer<T> {
     /// 2. Param bound
     /// 3. Any
     pub fn infer_defaults(&self) {
-        let uninferred = self
-            .uninferred()
-            .map(|(gid, _param)| gid)
-            .collect::<Vec<_>>();
+        let uninferred = self.uninferred().map(|(gid, _param)| gid).collect::<Vec<_>>();
         for param_id in uninferred {
             let var = self.variables.get(&param_id).unwrap();
             let default = if let Some(default) = var.parameter.default.clone() {
@@ -246,8 +229,7 @@ impl<T: Type> ScopePointer<T> {
             } else {
                 TypeExpr::Any
             };
-            self.infer(&param_id, default, ScopePointer::clone(self))
-                .expect("expected var not to be inferred yet");
+            self.infer(&param_id, default, ScopePointer::clone(self)).expect("expected var not to be inferred yet");
         }
     }
 
@@ -255,21 +237,14 @@ impl<T: Type> ScopePointer<T> {
         if self.0.variables.contains_key(parameter) {
             return Some(ScopePointer::clone(self));
         }
-        if let Some(parent) = &self.parent {
-            parent.lookup_scope(parameter)
-        } else {
-            None
-        }
+        if let Some(parent) = &self.parent { parent.lookup_scope(parameter) } else { None }
     }
 }
 
 impl<T: Type> Scope<T> {
     /// Creates a root scope with no parent.
     pub fn new_root() -> Self {
-        Self {
-            variables: HashMap::new(),
-            parent: None,
-        }
+        Self { variables: HashMap::new(), parent: None }
     }
 
     /// Creates a child scope that inherits from `parent`.
@@ -277,21 +252,12 @@ impl<T: Type> Scope<T> {
         // if parent.is_inferred(&LocalParamID(0)) {
         //     panic!("parent scope is inferred");
         // }
-        Self {
-            variables: HashMap::new(),
-            parent: Some(ScopePointer::clone(parent)),
-        }
+        Self { variables: HashMap::new(), parent: Some(ScopePointer::clone(parent)) }
     }
 
     /// Defines a type parameter in this scope.
     pub fn define(&mut self, ident: LocalParamID, parameter: TypeParameter<T, ScopePortal<T>>) {
-        self.variables.insert(
-            ident,
-            RegisteredTypeVar {
-                parameter,
-                inferred: RefCell::new(None),
-            },
-        );
+        self.variables.insert(ident, RegisteredTypeVar { parameter, inferred: RefCell::new(None) });
     }
 
     /// Sets the inferred type for a parameter (no-op if already inferred).
@@ -322,15 +288,9 @@ impl<T: Type> Scope<T> {
 
     /// # Returns
     /// An iterator over all variable identifiers that are not yet inferred.
-    pub fn uninferred(
-        &self,
-    ) -> impl Iterator<Item = (LocalParamID, TypeParameter<T, ScopePortal<T>>)> {
+    pub fn uninferred(&self) -> impl Iterator<Item = (LocalParamID, TypeParameter<T, ScopePortal<T>>)> {
         self.variables.iter().filter_map(|(ident, param)| {
-            if param.inferred.borrow().is_none() {
-                Some((*ident, param.parameter.clone()))
-            } else {
-                None
-            }
+            if param.inferred.borrow().is_none() { Some((*ident, param.parameter.clone())) } else { None }
         })
     }
 
@@ -363,16 +323,9 @@ impl<T: Type> Scope<T> {
 
     /// Returns an iterator over all defined variables in this scope and its parents.
     /// Variables from the current scope are yielded first, then the parent's, and so on.
-    pub fn all_defined(
-        &self,
-    ) -> Box<dyn Iterator<Item = (LocalParamID, &RegisteredTypeVar<T>)> + '_> {
+    pub fn all_defined(&self) -> Box<dyn Iterator<Item = (LocalParamID, &RegisteredTypeVar<T>)> + '_> {
         let self_iter = self.variables.iter().map(|(id, var)| (*id, var));
-        let parent_iter = self
-            .parent
-            .as_ref()
-            .map(|p| p.all_defined())
-            .into_iter()
-            .flatten();
+        let parent_iter = self.parent.as_ref().map(|p| p.all_defined()).into_iter().flatten();
         Box::new(self_iter.chain(parent_iter))
     }
 }

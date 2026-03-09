@@ -36,10 +36,7 @@ pub mod port_types;
     ))
 )]
 #[cfg_attr(feature = "json-schema", derive(JsonSchema))]
-#[cfg_attr(
-    feature = "json-schema",
-    schemars(bound = "T: JsonSchema, T::Operator: JsonSchema, S: JsonSchema")
-)]
+#[cfg_attr(feature = "json-schema", schemars(bound = "T: JsonSchema, T::Operator: JsonSchema, S: JsonSchema"))]
 /// Function-like type for a node: generic parameters, inputs, outputs, and defaults.
 /// Written in notation as `<T>(T) -> (T)` for the identity node.
 #[cfg_attr(feature = "tsify", derive(Tsify))]
@@ -101,28 +98,16 @@ impl<T: Type, S: TypeExprScope> Default for NodeSignature<T, S> {
 impl<T: Type, S: TypeExprScope> NodeSignature<T, S> {
     /// Sets the provided tags to `Some(tags)`. See [`NodeSignature::tags`].
     pub fn with_tags(self, tags: HashSet<u32>) -> Self {
-        Self {
-            tags: Some(tags),
-            ..self
-        }
+        Self { tags: Some(tags), ..self }
     }
 
     /// Sets the required tags. See [`NodeSignature::required_tags`].
     pub fn with_required_tags(self, required_tags: HashSet<u32>) -> Self {
-        Self {
-            required_tags,
-            ..self
-        }
+        Self { required_tags, ..self }
     }
 
-    pub fn with_default_input_types(
-        self,
-        default_input_types: BTreeMap<usize, TypeExpr<T, S>>,
-    ) -> Self {
-        Self {
-            default_input_types,
-            ..self
-        }
+    pub fn with_default_input_types(self, default_input_types: BTreeMap<usize, TypeExpr<T, S>>) -> Self {
+        Self { default_input_types, ..self }
     }
 }
 
@@ -131,10 +116,7 @@ impl<T: Type> NodeSignature<T, ScopePortal<T>> {
     /// graph without invalidating any types. This is a convenience
     /// wrapper for the internal machinery. Needs ownership because
     /// the signature has to get wrapped in a type expression.
-    pub fn supertype_of(
-        self,
-        child: NodeSignature<T, ScopePortal<T>>,
-    ) -> SupertypeResult<NoSupertypeDiagnostics> {
+    pub fn supertype_of(self, child: NodeSignature<T, ScopePortal<T>>) -> SupertypeResult<NoSupertypeDiagnostics> {
         let parent_expr = TypeExpr::NodeSignature(Box::new(self));
         let child_expr = TypeExpr::NodeSignature(Box::new(child));
 
@@ -167,16 +149,8 @@ impl<T: Type> NodeSignature<T, ScopePortal<T>> {
         }
         let scope = ScopePointer::new(scope);
         for param in self.parameters.values() {
-            param
-                .bound
-                .as_ref()
-                .map(|bound| bound.validate(&scope))
-                .transpose()?;
-            param
-                .default
-                .as_ref()
-                .map(|default| default.validate(&scope))
-                .transpose()?;
+            param.bound.as_ref().map(|bound| bound.validate(&scope)).transpose()?;
+            param.default.as_ref().map(|default| default.validate(&scope)).transpose()?;
         }
         self.inputs.validate(&scope)?;
         self.outputs.validate(&scope)?;
@@ -229,11 +203,7 @@ pub fn validate_type_parameters<T: Type>(
             graph.add_edge(*source_idx, *target_idx, ());
         }
     }
-    if is_cyclic_directed(&graph) {
-        Err(CyclicReferenceError)
-    } else {
-        Ok(())
-    }
+    if is_cyclic_directed(&graph) { Err(CyclicReferenceError) } else { Ok(()) }
 }
 
 #[cfg(test)]
@@ -259,9 +229,6 @@ mod tests {
     fn test_validate_sig_invalid_ref() {
         let signature = sig("<T>(T) -> (U)");
         let result = signature.validate(&ScopePointer::new_root());
-        assert_eq!(
-            result,
-            Err(TypeExprValidationError::UnknownVar(LocalParamID::from("U")))
-        );
+        assert_eq!(result, Err(TypeExprValidationError::UnknownVar(LocalParamID::from("U"))));
     }
 }

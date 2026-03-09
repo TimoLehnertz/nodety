@@ -22,20 +22,16 @@ impl<T: Type> TypeExpr<T, ScopePortal<T>> {
             (_, Self::Never) => Some((Self::Never, ScopePointer::clone(scope_b))),
 
             // Type Params
-            (
-                a @ Self::TypeParameter(local_param_a, ..),
-                Self::TypeParameter(local_param_b, ..),
-            ) => {
+            (a @ Self::TypeParameter(local_param_a, ..), Self::TypeParameter(local_param_b, ..)) => {
                 let (_var_a, param_scope_a) = scope_a.lookup(local_param_a)?;
                 let (_var_b, param_scope_b) = scope_b.lookup(local_param_b)?;
                 // First check if the two variables reference the same var.
                 if local_param_a == local_param_b && param_scope_a == param_scope_b {
                     return Some((a.clone(), ScopePointer::clone(scope_a)));
                 }
-                let (Some((inferred_a, scope_a)), Some((inferred_b, scope_b))) = (
-                    scope_a.lookup_inferred(local_param_a),
-                    scope_b.lookup_inferred(local_param_b),
-                ) else {
+                let (Some((inferred_a, scope_a)), Some((inferred_b, scope_b))) =
+                    (scope_a.lookup_inferred(local_param_a), scope_b.lookup_inferred(local_param_b))
+                else {
                     return None;
                 };
                 Self::intersection(&inferred_a, &inferred_b, &scope_a, &scope_b)
@@ -50,42 +46,26 @@ impl<T: Type> TypeExpr<T, ScopePortal<T>> {
             }
 
             // Portals
-            (Self::ScopePortal { expr, scope }, b) => {
-                Self::intersection(expr, b, &scope.portal, scope_b)
-            }
-            (a, Self::ScopePortal { expr, scope }) => {
-                Self::intersection(a, expr, scope_a, &scope.portal)
-            }
+            (Self::ScopePortal { expr, scope }, b) => Self::intersection(expr, b, &scope.portal, scope_b),
+            (a, Self::ScopePortal { expr, scope }) => Self::intersection(a, expr, scope_a, &scope.portal),
 
             (Self::Intersection(a_a, a_b), b) => {
-                let (intersection_a, intersection_a_scope) =
-                    Self::intersection(a_a, a_b, scope_a, scope_a)?;
+                let (intersection_a, intersection_a_scope) = Self::intersection(a_a, a_b, scope_a, scope_a)?;
                 Self::intersection(&intersection_a, b, &intersection_a_scope, scope_b)
             }
             (a, Self::Intersection(b_a, b_b)) => {
-                let (intersection_b, intersection_b_scope) =
-                    Self::intersection(b_a, b_b, scope_b, scope_b)?;
+                let (intersection_b, intersection_b_scope) = Self::intersection(b_a, b_b, scope_b, scope_b)?;
                 Self::intersection(a, &intersection_b, scope_a, &intersection_b_scope)
             }
             (Self::Operation { a, b, operator }, b_expr) => {
                 let a_normalized = a.normalize(scope_a);
                 let b_normalized = b.normalize(scope_a);
-                Self::intersection(
-                    &T::operation(&a_normalized, operator, &b_normalized),
-                    b_expr,
-                    scope_a,
-                    scope_b,
-                )
+                Self::intersection(&T::operation(&a_normalized, operator, &b_normalized), b_expr, scope_a, scope_b)
             }
             (a_expr, Self::Operation { a, b, operator }) => {
                 let a_normalized = a.normalize(scope_b);
                 let b_normalized = b.normalize(scope_b);
-                Self::intersection(
-                    a_expr,
-                    &T::operation(&a_normalized, operator, &b_normalized),
-                    scope_a,
-                    scope_b,
-                )
+                Self::intersection(a_expr, &T::operation(&a_normalized, operator, &b_normalized), scope_a, scope_b)
             }
 
             (Self::Conditional(conditional), b) => {
@@ -95,9 +75,7 @@ impl<T: Type> TypeExpr<T, ScopePortal<T>> {
                 Self::intersection(a, &conditional.distribute(scope_b)?, scope_a, scope_b)
             }
 
-            (Self::Type(a), Self::Type(b)) if a == b => {
-                Some((Self::Type(a.clone()), ScopePointer::clone(scope_a)))
-            }
+            (Self::Type(a), Self::Type(b)) if a == b => Some((Self::Type(a.clone()), ScopePointer::clone(scope_a))),
             (Self::Constructor { inner, .. }, Self::Type(inst)) if inner == inst => {
                 Some((a.clone(), ScopePointer::clone(scope_a)))
             }
@@ -105,14 +83,8 @@ impl<T: Type> TypeExpr<T, ScopePortal<T>> {
                 Some((b.clone(), ScopePointer::clone(scope_b)))
             }
             (
-                Self::Constructor {
-                    inner: inner_a,
-                    parameters: parameters_a,
-                },
-                Self::Constructor {
-                    inner: inner_b,
-                    parameters: parameters_b,
-                },
+                Self::Constructor { inner: inner_a, parameters: parameters_a },
+                Self::Constructor { inner: inner_b, parameters: parameters_b },
             ) if inner_a == inner_b => {
                 let mut intersected_params = BTreeMap::new();
                 for ident in parameters_a.keys().chain(parameters_b.keys()) {
@@ -131,23 +103,16 @@ impl<T: Type> TypeExpr<T, ScopePortal<T>> {
                         ident.clone(),
                         TypeExpr::ScopePortal {
                             expr: Box::new(intersected_param),
-                            scope: ScopePortal {
-                                portal: intersected_scope,
-                            },
+                            scope: ScopePortal { portal: intersected_scope },
                         },
                     );
                 }
                 Some((
-                    Self::Constructor {
-                        inner: inner_a.clone(),
-                        parameters: intersected_params,
-                    },
+                    Self::Constructor { inner: inner_a.clone(), parameters: intersected_params },
                     ScopePointer::clone(scope_a),
                 ))
             }
-            (Self::Constructor { .. }, Self::Constructor { .. }) => {
-                Some((Self::Never, ScopePointer::clone(scope_a)))
-            }
+            (Self::Constructor { .. }, Self::Constructor { .. }) => Some((Self::Never, ScopePointer::clone(scope_a))),
 
             (Self::Index { expr, index }, b) => {
                 let (index_type, index_scope) = expr.index(index, scope_a, scope_a)?;
@@ -167,13 +132,9 @@ impl<T: Type> TypeExpr<T, ScopePortal<T>> {
                 Self::intersection(a, &key_type, scope_a, &key_scope)
             }
 
-            (Self::NodeSignature(_), _) | (_, Self::NodeSignature(_)) => {
-                Some((Self::Never, ScopePointer::new_root()))
-            }
+            (Self::NodeSignature(_), _) | (_, Self::NodeSignature(_)) => Some((Self::Never, ScopePointer::new_root())),
 
-            (Self::PortTypes(_), _) | (_, Self::PortTypes(_)) => {
-                Some((Self::Never, ScopePointer::new_root()))
-            }
+            (Self::PortTypes(_), _) | (_, Self::PortTypes(_)) => Some((Self::Never, ScopePointer::new_root())),
 
             // @Todo: Test this
             // type G = Prettify<({ a: number } | { b: number }) & ({ c: string } | { d: boolean })>;
@@ -182,10 +143,7 @@ impl<T: Type> TypeExpr<T, ScopePortal<T>> {
                 let (b_intersection, b_scope) = Self::intersection(b, c, scope_a, scope_b)?;
 
                 if a_scope == b_scope {
-                    Some((
-                        Self::Union(Box::new(a_intersection), Box::new(b_intersection)),
-                        a_scope.clone(),
-                    ))
+                    Some((Self::Union(Box::new(a_intersection), Box::new(b_intersection)), a_scope.clone()))
                 } else {
                     Some((
                         Self::Union(
@@ -207,10 +165,7 @@ impl<T: Type> TypeExpr<T, ScopePortal<T>> {
                 let (c_intersection, c_scope) = Self::intersection(a, c, scope_a, scope_b)?;
 
                 if b_scope == c_scope {
-                    Some((
-                        Self::Union(Box::new(b_intersection), Box::new(c_intersection)),
-                        b_scope.clone(),
-                    ))
+                    Some((Self::Union(Box::new(b_intersection), Box::new(c_intersection)), b_scope.clone()))
                 } else {
                     Some((
                         Self::Union(

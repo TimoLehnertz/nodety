@@ -12,30 +12,12 @@ mod common;
 #[test]
 pub fn test_never_of_signatures() {
     let never_of_signatures = sig("Any -> Never");
-    assert!(
-        sig("(Integer) -> (String)")
-            .supertype_of(never_of_signatures.clone())
-            .is_supertype()
-    );
+    assert!(sig("(Integer) -> (String)").supertype_of(never_of_signatures.clone()).is_supertype());
 
-    assert!(
-        sig("<T>(T, String) -> (Integer, T)")
-            .supertype_of(never_of_signatures.clone())
-            .is_supertype()
-    );
-    assert!(
-        !never_of_signatures
-            .clone()
-            .supertype_of(sig("<T>(T, String) -> (Integer, T)"))
-            .is_supertype()
-    );
+    assert!(sig("<T>(T, String) -> (Integer, T)").supertype_of(never_of_signatures.clone()).is_supertype());
+    assert!(!never_of_signatures.clone().supertype_of(sig("<T>(T, String) -> (Integer, T)")).is_supertype());
 
-    assert!(
-        never_of_signatures
-            .clone()
-            .supertype_of(never_of_signatures.clone())
-            .is_supertype()
-    );
+    assert!(never_of_signatures.clone().supertype_of(never_of_signatures.clone()).is_supertype());
 }
 
 #[test]
@@ -46,19 +28,9 @@ pub fn test_mother_of_signatures() {
     let mut child = sig("<T>(T, String) -> (Integer, T)");
     child.tags = Some(hashset! {123});
 
-    assert!(
-        mother_of_signatures
-            .clone()
-            .supertype_of(child)
-            .is_supertype()
-    );
+    assert!(mother_of_signatures.clone().supertype_of(child).is_supertype());
 
-    assert!(
-        mother_of_signatures
-            .clone()
-            .supertype_of(mother_of_signatures)
-            .is_supertype()
-    );
+    assert!(mother_of_signatures.clone().supertype_of(mother_of_signatures).is_supertype());
 }
 
 #[test]
@@ -86,26 +58,12 @@ pub fn test_conditional_type_generic() {
 
     let scope = ScopePointer::new(scope);
 
-    scope
-        .infer(
-            &LocalParamID(0),
-            expr("String|Unit"),
-            ScopePointer::new_root(),
-        )
-        .unwrap();
+    scope.infer(&LocalParamID(0), expr("String|Unit"), ScopePointer::new_root()).unwrap();
 
     assert_eq!(expr("String"), non_unit.normalize(&scope));
 
-    assert!(
-        non_unit
-            .supertype_of(&expr("String"), &scope, &scope)
-            .is_supertype()
-    );
-    assert!(
-        expr("String")
-            .supertype_of(&non_unit, &scope, &scope)
-            .is_supertype()
-    );
+    assert!(non_unit.supertype_of(&expr("String"), &scope, &scope).is_supertype());
+    assert!(expr("String").supertype_of(&non_unit, &scope, &scope).is_supertype());
 }
 
 #[test]
@@ -113,19 +71,10 @@ fn test_generic_index_supertype() {
     let index_expr = expr("#0[Integer]");
     let mut scope = Scope::new_root();
     scope.define(LocalParamID(0), TypeParameter::default());
-    scope
-        .infer(
-            &LocalParamID(0),
-            expr("Array<Integer>"),
-            ScopePointer::new_root(),
-        )
-        .unwrap();
+    scope.infer(&LocalParamID(0), expr("Array<Integer>"), ScopePointer::new_root()).unwrap();
     let scope = ScopePointer::new(scope);
 
-    assert_eq!(
-        index_expr.supertype_of(&index_expr, &scope, &scope),
-        SupertypeResult::Supertype
-    );
+    assert_eq!(index_expr.supertype_of(&index_expr, &scope, &scope), SupertypeResult::Supertype);
 }
 
 #[test]
@@ -133,13 +82,7 @@ fn test_generic_keyof_supertype() {
     let keyof_expr = expr("keyof #0");
     let mut scope = Scope::new_root();
     scope.define(LocalParamID(0), TypeParameter::default());
-    scope
-        .infer(
-            &LocalParamID(0),
-            expr("{a: Integer, b: String}"),
-            ScopePointer::new_root(),
-        )
-        .unwrap();
+    scope.infer(&LocalParamID(0), expr("{a: Integer, b: String}"), ScopePointer::new_root()).unwrap();
     let scope = ScopePointer::new(scope);
 
     let normalized = keyof_expr.normalize(&scope);
@@ -152,22 +95,14 @@ fn test_generic_keyof_supertype() {
 fn test_keyof_any() {
     let scope = ScopePointer::new_root();
     // Used to fail
-    assert!(
-        expr("keyof Any")
-            .supertype_of(&expr("keyof Any"), &scope, &scope)
-            .is_supertype()
-    );
+    assert!(expr("keyof Any").supertype_of(&expr("keyof Any"), &scope, &scope).is_supertype());
 }
 
 #[test]
 fn test_never_intersection_supertype() {
     let scope = ScopePointer::new_root();
     // Used to fail
-    assert!(
-        expr("Integer & Sortable")
-            .supertype_of(&expr("Integer & Sortable"), &scope, &scope)
-            .is_supertype()
-    );
+    assert!(expr("Integer & Sortable").supertype_of(&expr("Integer & Sortable"), &scope, &scope).is_supertype());
 }
 
 #[test]
@@ -210,33 +145,13 @@ fn test_something() {
     scope.define(LocalParamID(0), TypeParameter::default());
     scope.define(LocalParamID(1), TypeParameter::default());
 
-    scope
-        .infer(
-            &LocalParamID(0),
-            expr("{a: Integer}"),
-            ScopePointer::new_root(),
-        )
-        .unwrap();
-    scope
-        .infer(
-            &LocalParamID(1),
-            expr("{b: Float}"),
-            ScopePointer::new_root(),
-        )
-        .unwrap();
+    scope.infer(&LocalParamID(0), expr("{a: Integer}"), ScopePointer::new_root()).unwrap();
+    scope.infer(&LocalParamID(1), expr("{b: Float}"), ScopePointer::new_root()).unwrap();
 
     let scope = ScopePointer::new(scope);
 
-    assert!(
-        expr("{a: Integer, b: Float}")
-            .supertype_of(&expr("#0 & #1"), &scope, &scope)
-            .is_supertype()
-    );
-    assert!(
-        !expr("{a: Integer, c: Float}")
-            .supertype_of(&expr("#0 & #1"), &scope, &scope)
-            .is_supertype()
-    );
+    assert!(expr("{a: Integer, b: Float}").supertype_of(&expr("#0 & #1"), &scope, &scope).is_supertype());
+    assert!(!expr("{a: Integer, c: Float}").supertype_of(&expr("#0 & #1"), &scope, &scope).is_supertype());
 }
 
 #[test]
@@ -255,11 +170,7 @@ fn test_infer_from() {
 
 #[test]
 fn test_operation_supertypes() {
-    assert!(
-        expr("Any * Any")
-            .supertype_of_naive(&expr("Any * Any"))
-            .is_supertype()
-    );
+    assert!(expr("Any * Any").supertype_of_naive(&expr("Any * Any")).is_supertype());
 }
 
 #[test]

@@ -124,10 +124,7 @@ pub trait Type: Sized + Clone + Debug + PartialEq {
     ///
     /// # Returns
     /// The key type of `self` or [TypeExpr::Never] if it has no key type.
-    fn key_type(
-        &self,
-        _fields: Option<&BTreeMap<String, ScopedTypeExpr<Self>>>,
-    ) -> ScopedTypeExpr<Self> {
+    fn key_type(&self, _fields: Option<&BTreeMap<String, ScopedTypeExpr<Self>>>) -> ScopedTypeExpr<Self> {
         TypeExpr::Never
     }
 
@@ -158,9 +155,7 @@ pub trait Type: Sized + Clone + Debug + PartialEq {
     /// Same as in ts.
     ///
     /// Overwrite this to customize the behavior.
-    fn keyof_node_signature(
-        _node_signature: &NodeSignature<Self, ScopePortal<Self>>,
-    ) -> ScopedTypeExpr<Self> {
+    fn keyof_node_signature(_node_signature: &NodeSignature<Self, ScopePortal<Self>>) -> ScopedTypeExpr<Self> {
         TypeExpr::Never
     }
 }

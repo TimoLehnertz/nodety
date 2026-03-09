@@ -16,16 +16,9 @@ mod common;
 ///  |    int| ----- |T    |
 #[test]
 pub fn test_infer_forwards() {
-    let engine = graph(
-        vec![sig_u("() -> (Integer)"), sig_u("<T>(T) -> ()")],
-        vec![(0, 1, 0, 0)],
-    );
+    let engine = graph(vec![sig_u("() -> (Integer)"), sig_u("<T>(T) -> ()")], vec![(0, 1, 0, 0)]);
     let scopes = engine.infer(InferenceConfig::default());
-    let inferred_t = scopes
-        .get(&NodeIndex::from(1))
-        .unwrap()
-        .lookup_inferred(&LocalParamID::from("T"))
-        .unwrap();
+    let inferred_t = scopes.get(&NodeIndex::from(1)).unwrap().lookup_inferred(&LocalParamID::from("T")).unwrap();
     assert_eq!(inferred_t.0, Type(Integer));
 }
 
@@ -33,18 +26,11 @@ pub fn test_infer_forwards() {
 ///  |     T| ----- |int    |
 #[test]
 pub fn test_infer_backwards() {
-    let engine = graph(
-        vec![sig_u("<T>() -> (T)"), sig_u("(Integer) -> ()")],
-        vec![(0, 1, 0, 0)],
-    );
+    let engine = graph(vec![sig_u("<T>() -> (T)"), sig_u("(Integer) -> ()")], vec![(0, 1, 0, 0)]);
 
     let scopes = engine.infer(InferenceConfig::default());
 
-    let inferred_t = scopes
-        .get(&NodeIndex::from(0))
-        .unwrap()
-        .lookup_inferred(&LocalParamID::from("T"))
-        .unwrap();
+    let inferred_t = scopes.get(&NodeIndex::from(0)).unwrap().lookup_inferred(&LocalParamID::from("T")).unwrap();
     assert_eq!(inferred_t.0, Type(Integer));
 }
 
@@ -53,23 +39,12 @@ pub fn test_infer_backwards() {
 #[test]
 pub fn test_infer_multiple_backwards() {
     let engine = graph(
-        vec![
-            sig_u("<T>() -> (T)"),
-            sig_u("<T>(T) -> (T)"),
-            sig_u("(String) -> ()"),
-        ],
+        vec![sig_u("<T>() -> (T)"), sig_u("<T>(T) -> (T)"), sig_u("(String) -> ()")],
         vec![(0, 1, 0, 0), (1, 2, 0, 0)],
     );
     let scopes = engine.infer(InferenceConfig::default());
-    let inferred_t = scopes
-        .get(&NodeIndex::from(0))
-        .unwrap()
-        .lookup_inferred(&LocalParamID::from("T"))
-        .unwrap();
-    assert_eq!(
-        inferred_t.0.normalize(&inferred_t.1),
-        TypeExpr::Type(String(None))
-    );
+    let inferred_t = scopes.get(&NodeIndex::from(0)).unwrap().lookup_inferred(&LocalParamID::from("T")).unwrap();
+    assert_eq!(inferred_t.0.normalize(&inferred_t.1), TypeExpr::Type(String(None)));
 }
 
 ///                   <T>            <T>
@@ -77,24 +52,13 @@ pub fn test_infer_multiple_backwards() {
 #[test]
 pub fn test_infer_multiple_forwards() {
     let engine = graph(
-        vec![
-            sig_u("() -> (String)"),
-            sig_u("<T>(T) -> (T)"),
-            sig_u("<T>(T) -> ()"),
-        ],
+        vec![sig_u("() -> (String)"), sig_u("<T>(T) -> (T)"), sig_u("<T>(T) -> ()")],
         vec![(0, 1, 0, 0), (1, 2, 0, 0)],
     );
     let scopes = engine.infer(InferenceConfig::default());
-    let inferred_t = scopes
-        .get(&NodeIndex::from(2))
-        .unwrap()
-        .lookup_inferred(&LocalParamID::from("T"))
-        .unwrap();
+    let inferred_t = scopes.get(&NodeIndex::from(2)).unwrap().lookup_inferred(&LocalParamID::from("T")).unwrap();
 
-    assert_eq!(
-        inferred_t.0.normalize(&inferred_t.1),
-        TypeExpr::Type(String(None))
-    );
+    assert_eq!(inferred_t.0.normalize(&inferred_t.1), TypeExpr::Type(String(None)));
 }
 
 ///   <#0>       <#1>
@@ -104,22 +68,12 @@ pub fn test_infer_multiple_forwards() {
 /// U gets inferred to T and T does not get inferred at all because inferring it from U would create a cycle.
 #[test]
 pub fn test_infer_identity() {
-    let engine = graph(
-        vec![sig_u("<#0>() -> (#0)"), sig_u("<#1>(#1) -> ()")],
-        vec![(0, 1, 0, 0)],
-    );
+    let engine = graph(vec![sig_u("<#0>() -> (#0)"), sig_u("<#1>(#1) -> ()")], vec![(0, 1, 0, 0)]);
     let scopes = engine.infer(InferenceConfig::default());
 
-    let inferred_0 = scopes
-        .get(&NodeIndex::from(0))
-        .unwrap()
-        .lookup_inferred(&LocalParamID(0));
+    let inferred_0 = scopes.get(&NodeIndex::from(0)).unwrap().lookup_inferred(&LocalParamID(0));
     // dbg!(&inferred_0);
-    let (inferred_1, ..) = scopes
-        .get(&NodeIndex::from(1))
-        .unwrap()
-        .lookup_inferred(&LocalParamID(1))
-        .unwrap();
+    let (inferred_1, ..) = scopes.get(&NodeIndex::from(1)).unwrap().lookup_inferred(&LocalParamID(1)).unwrap();
 
     assert!(inferred_0.is_none());
     assert_eq!(inferred_1, TypeParameter(LocalParamID(0), true));
@@ -135,33 +89,16 @@ pub fn test_infer_identity() {
 #[test]
 pub fn test_infer_map() {
     let engine = graph(
-        vec![
-            sig_u("() -> (Array<Integer>, (Integer) -> (String))"),
-            sig_u("<T, U>(Array<T>, (T) -> (U)) -> ()"),
-        ],
+        vec![sig_u("() -> (Array<Integer>, (Integer) -> (String))"), sig_u("<T, U>(Array<T>, (T) -> (U)) -> ()")],
         vec![(0, 1, 0, 0), (0, 1, 1, 1)],
     );
     let scopes = engine.infer(InferenceConfig::default());
 
-    let inferred_t = scopes
-        .get(&NodeIndex::from(1))
-        .unwrap()
-        .lookup_inferred(&LocalParamID::from("T"))
-        .unwrap();
-    let inferred_u = scopes
-        .get(&NodeIndex::from(1))
-        .unwrap()
-        .lookup_inferred(&LocalParamID::from("U"))
-        .unwrap();
+    let inferred_t = scopes.get(&NodeIndex::from(1)).unwrap().lookup_inferred(&LocalParamID::from("T")).unwrap();
+    let inferred_u = scopes.get(&NodeIndex::from(1)).unwrap().lookup_inferred(&LocalParamID::from("U")).unwrap();
 
-    assert_eq!(
-        inferred_t.0.normalize(&inferred_t.1),
-        TypeExpr::Type(Integer)
-    );
-    assert_eq!(
-        inferred_u.0.normalize(&inferred_u.1),
-        TypeExpr::Type(String(None))
-    );
+    assert_eq!(inferred_t.0.normalize(&inferred_t.1), TypeExpr::Type(Integer));
+    assert_eq!(inferred_u.0.normalize(&inferred_u.1), TypeExpr::Type(String(None)));
 }
 
 ///                                  <T>
@@ -171,24 +108,11 @@ pub fn test_infer_map() {
 /// T should infer to int
 #[test]
 pub fn test_infer_record() {
-    let engine = graph(
-        vec![
-            sig_u("() -> ({a: Integer, b: String})"),
-            sig_u("<T>({a: T}) -> ()"),
-        ],
-        vec![(0, 1, 0, 0)],
-    );
+    let engine = graph(vec![sig_u("() -> ({a: Integer, b: String})"), sig_u("<T>({a: T}) -> ()")], vec![(0, 1, 0, 0)]);
     let scopes = engine.infer(InferenceConfig::default());
-    let inferred_t = scopes
-        .get(&NodeIndex::from(1))
-        .unwrap()
-        .lookup_inferred(&LocalParamID::from("T"))
-        .unwrap();
+    let inferred_t = scopes.get(&NodeIndex::from(1)).unwrap().lookup_inferred(&LocalParamID::from("T")).unwrap();
 
-    assert_eq!(
-        inferred_t.0.normalize(&inferred_t.1),
-        TypeExpr::Type(Integer)
-    );
+    assert_eq!(inferred_t.0.normalize(&inferred_t.1), TypeExpr::Type(Integer));
 }
 
 ///  <T>                     <U>
@@ -199,30 +123,14 @@ pub fn test_infer_record() {
 /// U gets inferred to int
 #[test]
 pub fn test_infer_record_both_sides_generic() {
-    let engine = graph(
-        vec![
-            sig_u("<T>() -> ({a: Integer, b: T})"),
-            sig_u("<U>({a: U}) -> ()"),
-        ],
-        vec![(0, 1, 0, 0)],
-    );
+    let engine = graph(vec![sig_u("<T>() -> ({a: Integer, b: T})"), sig_u("<U>({a: U}) -> ()")], vec![(0, 1, 0, 0)]);
     let scopes = engine.infer(InferenceConfig::default());
-    let inferred_t = scopes
-        .get(&NodeIndex::from(0))
-        .unwrap()
-        .lookup_inferred(&LocalParamID::from("T"));
-    let inferred_u = scopes
-        .get(&NodeIndex::from(1))
-        .unwrap()
-        .lookup_inferred(&LocalParamID::from("U"))
-        .unwrap();
+    let inferred_t = scopes.get(&NodeIndex::from(0)).unwrap().lookup_inferred(&LocalParamID::from("T"));
+    let inferred_u = scopes.get(&NodeIndex::from(1)).unwrap().lookup_inferred(&LocalParamID::from("U")).unwrap();
 
     assert!(inferred_t.is_none());
 
-    assert_eq!(
-        inferred_u.0.normalize(&inferred_u.1),
-        TypeExpr::Type(Integer)
-    );
+    assert_eq!(inferred_u.0.normalize(&inferred_u.1), TypeExpr::Type(Integer));
 }
 
 ///                    <T, U, M>
@@ -246,34 +154,13 @@ pub fn test_infer_default_types() {
     let engine = graph(vec![sig_u("() -> (String)"), sig_2], vec![(0, 1, 0, 0)]);
     let scopes = engine.infer(InferenceConfig::default());
 
-    let inferred_t = scopes
-        .get(&NodeIndex::from(1))
-        .unwrap()
-        .lookup_inferred(&LocalParamID::from("T"))
-        .unwrap();
-    let inferred_u = scopes
-        .get(&NodeIndex::from(1))
-        .unwrap()
-        .lookup_inferred(&LocalParamID::from("U"))
-        .unwrap();
-    let inferred_m = scopes
-        .get(&NodeIndex::from(1))
-        .unwrap()
-        .lookup_inferred(&LocalParamID::from("M"))
-        .unwrap();
+    let inferred_t = scopes.get(&NodeIndex::from(1)).unwrap().lookup_inferred(&LocalParamID::from("T")).unwrap();
+    let inferred_u = scopes.get(&NodeIndex::from(1)).unwrap().lookup_inferred(&LocalParamID::from("U")).unwrap();
+    let inferred_m = scopes.get(&NodeIndex::from(1)).unwrap().lookup_inferred(&LocalParamID::from("M")).unwrap();
 
-    assert_eq!(
-        inferred_t.0.normalize(&inferred_t.1),
-        TypeExpr::Type(String(None))
-    );
-    assert_eq!(
-        inferred_u.0.normalize(&inferred_u.1),
-        TypeExpr::Type(Integer)
-    );
-    assert_eq!(
-        inferred_m.0.normalize(&inferred_m.1),
-        TypeExpr::Type(Integer)
-    );
+    assert_eq!(inferred_t.0.normalize(&inferred_t.1), TypeExpr::Type(String(None)));
+    assert_eq!(inferred_u.0.normalize(&inferred_u.1), TypeExpr::Type(Integer));
+    assert_eq!(inferred_m.0.normalize(&inferred_m.1), TypeExpr::Type(Integer));
 }
 
 ///               <T>
@@ -284,23 +171,14 @@ pub fn test_infer_default_types() {
 /// T gets inferred for Int
 #[test]
 pub fn test_infer_invalid_record() {
-    let engine = graph(
-        vec![sig_u("() -> ({}, Integer)"), sig_u("<T>({a: T}, T) -> ()")],
-        vec![(0, 1, 0, 0), (0, 1, 1, 1)],
-    );
+    let engine =
+        graph(vec![sig_u("() -> ({}, Integer)"), sig_u("<T>({a: T}, T) -> ()")], vec![(0, 1, 0, 0), (0, 1, 1, 1)]);
 
     let scopes = engine.infer(InferenceConfig::default());
 
-    let inferred_t = scopes
-        .get(&NodeIndex::from(1))
-        .unwrap()
-        .lookup_inferred(&LocalParamID::from("T"))
-        .unwrap();
+    let inferred_t = scopes.get(&NodeIndex::from(1)).unwrap().lookup_inferred(&LocalParamID::from("T")).unwrap();
 
-    assert_eq!(
-        inferred_t.0.normalize(&inferred_t.1),
-        TypeExpr::Type(Integer)
-    );
+    assert_eq!(inferred_t.0.normalize(&inferred_t.1), TypeExpr::Type(Integer));
 }
 
 ///                      <T>
@@ -311,46 +189,22 @@ pub fn test_infer_invalid_record() {
 /// T gets inferred to Comparable because that is the only common supertype.
 #[test]
 pub fn test_infer_best_common_supertype() {
-    let engine = graph(
-        vec![
-            sig_u("() -> (Integer, Comparable)"),
-            sig_u("<T>(T, T) -> ()"),
-        ],
-        vec![(0, 1, 0, 0), (0, 1, 1, 1)],
-    );
+    let engine =
+        graph(vec![sig_u("() -> (Integer, Comparable)"), sig_u("<T>(T, T) -> ()")], vec![(0, 1, 0, 0), (0, 1, 1, 1)]);
     let scopes = engine.infer(InferenceConfig::default());
 
-    let inferred_t = scopes
-        .get(&NodeIndex::from(1))
-        .unwrap()
-        .lookup_inferred(&LocalParamID::from("T"))
-        .unwrap();
+    let inferred_t = scopes.get(&NodeIndex::from(1)).unwrap().lookup_inferred(&LocalParamID::from("T")).unwrap();
 
-    assert_eq!(
-        inferred_t.0.normalize(&inferred_t.1),
-        TypeExpr::Type(Comparable)
-    );
+    assert_eq!(inferred_t.0.normalize(&inferred_t.1), TypeExpr::Type(Comparable));
 
     // Verify that the other way around works as well.
-    let engine = graph(
-        vec![
-            sig_u("() -> (Comparable, Integer)"),
-            sig_u("<T>(T, T) -> ()"),
-        ],
-        vec![(0, 1, 0, 0), (0, 1, 1, 1)],
-    );
+    let engine =
+        graph(vec![sig_u("() -> (Comparable, Integer)"), sig_u("<T>(T, T) -> ()")], vec![(0, 1, 0, 0), (0, 1, 1, 1)]);
     let scopes = engine.infer(InferenceConfig::default());
 
-    let inferred_t = scopes
-        .get(&NodeIndex::from(1))
-        .unwrap()
-        .lookup_inferred(&LocalParamID::from("T"))
-        .unwrap();
+    let inferred_t = scopes.get(&NodeIndex::from(1)).unwrap().lookup_inferred(&LocalParamID::from("T")).unwrap();
 
-    assert_eq!(
-        inferred_t.0.normalize(&inferred_t.1),
-        TypeExpr::Type(Comparable)
-    );
+    assert_eq!(inferred_t.0.normalize(&inferred_t.1), TypeExpr::Type(Comparable));
 }
 
 ///  |  ((Integer, Integer) -> ())  | ----- | <T>((Integer, ...T) -> ()) -> ()  |
@@ -358,16 +212,13 @@ pub fn test_infer_best_common_supertype() {
 #[test]
 fn test_infer_variadic_from_function() {
     let engine = graph(
-        vec![
-            sig_u("() -> ((Integer, Integer) -> ())"),
-            sig_u("<T>((Integer, ...T) -> ()) -> ()"),
-        ],
+        vec![sig_u("() -> ((Integer, Integer) -> ())"), sig_u("<T>((Integer, ...T) -> ()) -> ()")],
         vec![(0, 1, 0, 0)],
     );
     let scopes = engine.infer(InferenceConfig::default());
 
-    let inferred_t = TypeExpr::TypeParameter(LocalParamID::from("T"), true)
-        .normalize(scopes.get(&NodeIndex::from(1)).unwrap());
+    let inferred_t =
+        TypeExpr::TypeParameter(LocalParamID::from("T"), true).normalize(scopes.get(&NodeIndex::from(1)).unwrap());
 
     assert_eq!(inferred_t, Type(Integer));
 }
@@ -375,22 +226,16 @@ fn test_infer_variadic_from_function() {
 #[test]
 fn test_infer_closure() {
     let engine = graph(
-        vec![
-            sig_u("<T extends Never -> Any>() -> (T)"),
-            sig_u("((Integer, Integer) -> (Integer) | Integer) -> ()"),
-        ],
+        vec![sig_u("<T extends Never -> Any>() -> (T)"), sig_u("((Integer, Integer) -> (Integer) | Integer) -> ()")],
         vec![(0, 1, 0, 0)],
     );
     // dbg!(sig("((Integer, Integer) -> (Integer) | Integer) -> ()"));
     let scopes = engine.infer(InferenceConfig::default());
 
-    let inferred_t = TypeExpr::TypeParameter(LocalParamID::from("T"), true)
-        .normalize(scopes.get(&NodeIndex::from(0)).unwrap());
+    let inferred_t =
+        TypeExpr::TypeParameter(LocalParamID::from("T"), true).normalize(scopes.get(&NodeIndex::from(0)).unwrap());
 
-    assert_eq!(
-        TypeExpr::NodeSignature(Box::new(sig("(Integer, Integer) -> (Integer)"))),
-        inferred_t
-    );
+    assert_eq!(TypeExpr::NodeSignature(Box::new(sig("(Integer, Integer) -> (Integer)"))), inferred_t);
 }
 ///                                           <T, U>
 ///            Array<{prev: String}> | ----- | Array<T>    Array<U> |
@@ -410,19 +255,13 @@ fn test_infer_generic_map() {
 
     let scope2 = scopes.get(&NodeIndex::from(2)).unwrap();
 
-    assert_eq!(
-        expr("Array<{prev: String, added: Integer}>"),
-        expr("Array<U>").normalize(scope2)
-    )
+    assert_eq!(expr("Array<{prev: String, added: Integer}>"), expr("Array<U>").normalize(scope2))
 }
 
 ///  |  string| ----- | int |
 #[test]
 pub fn test_infer_invalid_types() {
-    let engine = graph(
-        vec![sig_u("() -> (String)"), sig_u("(Integer) -> ()")],
-        vec![(0, 1, 0, 0)],
-    );
+    let engine = graph(vec![sig_u("() -> (String)"), sig_u("(Integer) -> ()")], vec![(0, 1, 0, 0)]);
     engine.infer(InferenceConfig::default());
 }
 
@@ -431,17 +270,13 @@ pub fn test_infer_invalid_types() {
 #[test]
 fn test_infer_from_keyof() {
     let engine = graph(
-        vec![
-            sig_u("() -> ({a: Integer})"),
-            sig_u("<T>(T) -> (T['a'])"),
-            sig_u("<U>(U) -> ()"),
-        ],
+        vec![sig_u("() -> ({a: Integer})"), sig_u("<T>(T) -> (T['a'])"), sig_u("<U>(U) -> ()")],
         vec![(0, 1, 0, 0), (1, 2, 0, 0)],
     );
     let scopes = engine.infer(InferenceConfig::default());
 
-    let inferred_u = TypeExpr::TypeParameter(LocalParamID::from("U"), true)
-        .normalize(scopes.get(&NodeIndex::from(2)).unwrap());
+    let inferred_u =
+        TypeExpr::TypeParameter(LocalParamID::from("U"), true).normalize(scopes.get(&NodeIndex::from(2)).unwrap());
 
     assert_eq!(expr("Integer"), inferred_u);
 }
@@ -451,17 +286,12 @@ fn test_infer_from_keyof() {
 #[test]
 fn test_infer_from_nested_keyof() {
     let engine = graph(
-        vec![
-            sig_u("() -> ({a: Array<Integer>})"),
-            sig_u("<#0>(#0) -> (#0['a'])"),
-            sig_u("<#1>(Array<#1>) -> ()"),
-        ],
+        vec![sig_u("() -> ({a: Array<Integer>})"), sig_u("<#0>(#0) -> (#0['a'])"), sig_u("<#1>(Array<#1>) -> ()")],
         vec![(0, 1, 0, 0), (1, 2, 0, 0)],
     );
     let scopes = engine.infer(InferenceConfig::default());
 
-    let inferred_1 = TypeExpr::TypeParameter(LocalParamID(1), true)
-        .normalize(scopes.get(&NodeIndex::from(2)).unwrap());
+    let inferred_1 = TypeExpr::TypeParameter(LocalParamID(1), true).normalize(scopes.get(&NodeIndex::from(2)).unwrap());
 
     assert_eq!(expr("Integer"), inferred_1);
 }
@@ -483,8 +313,7 @@ fn test_infer_from_index() {
     );
     let scopes = engine.infer(InferenceConfig::default());
 
-    let inferred_1 = TypeExpr::TypeParameter(LocalParamID(1), true)
-        .normalize(scopes.get(&NodeIndex::from(0)).unwrap());
+    let inferred_1 = TypeExpr::TypeParameter(LocalParamID(1), true).normalize(scopes.get(&NodeIndex::from(0)).unwrap());
 
     assert_eq!(expr("Integer"), inferred_1);
 }
@@ -512,18 +341,12 @@ fn test_infer_from_ternary() {
             /* 4 */ sig_u("<T>(T) -> (T['result_table'])"),
             /* 5 */ sig_u("<C, K extends keyof C>(Array<C>, K) -> ()"),
         ],
-        vec![
-            (0, 2, 0, 1),
-            (1, 2, 0, 2),
-            (3, 4, 0, 0),
-            (4, 5, 0, 0),
-            (2, 5, 0, 1),
-        ],
+        vec![(0, 2, 0, 1), (1, 2, 0, 2), (3, 4, 0, 0), (4, 5, 0, 0), (2, 5, 0, 1)],
     );
     let scopes = engine.infer(InferenceConfig::default());
 
-    let inferred_t = TypeExpr::TypeParameter(LocalParamID::from("K"), true)
-        .normalize(scopes.get(&NodeIndex::from(5)).unwrap());
+    let inferred_t =
+        TypeExpr::TypeParameter(LocalParamID::from("K"), true).normalize(scopes.get(&NodeIndex::from(5)).unwrap());
 
     assert_eq!(expr("'false-starts' | 'DQT'"), inferred_t);
 }
@@ -533,17 +356,15 @@ fn test_si_division() {
     let engine = graph(
         vec![
             // m / s
-            sig_u(
-                "<A extends AnySI, B extends AnySI>(a: A = SI(1,0,1), b: B = SI(1,1)) -> (A / B)",
-            ),
+            sig_u("<A extends AnySI, B extends AnySI>(a: A = SI(1,0,1), b: B = SI(1,1)) -> (A / B)"),
             sig_u("<T>(T) -> ()"),
         ],
         vec![(0, 1, 0, 0)],
     );
     let scopes = engine.infer(InferenceConfig::default());
 
-    let inferred_t = TypeExpr::TypeParameter(LocalParamID::from("T"), true)
-        .normalize(scopes.get(&NodeIndex::from(1)).unwrap());
+    let inferred_t =
+        TypeExpr::TypeParameter(LocalParamID::from("T"), true).normalize(scopes.get(&NodeIndex::from(1)).unwrap());
 
     assert_eq!(expr("SI(1,-1,1)"), inferred_t);
 }
@@ -555,17 +376,11 @@ fn test_si_division() {
 /// candidate collection so that later U gets inferred to Integer.
 #[test]
 fn test_infer_during_candidate_collection() {
-    let engine = graph(
-        vec![
-            sig_u("() -> (<T>(T) -> (T))"),
-            sig_u("<U>((U) -> (Integer)) -> ()"),
-        ],
-        vec![(0, 1, 0, 0)],
-    );
+    let engine = graph(vec![sig_u("() -> (<T>(T) -> (T))"), sig_u("<U>((U) -> (Integer)) -> ()")], vec![(0, 1, 0, 0)]);
     let scopes = engine.infer(InferenceConfig::default());
 
-    let inferred_u = TypeExpr::TypeParameter(LocalParamID::from("U"), true)
-        .normalize(scopes.get(&NodeIndex::from(1)).unwrap());
+    let inferred_u =
+        TypeExpr::TypeParameter(LocalParamID::from("U"), true).normalize(scopes.get(&NodeIndex::from(1)).unwrap());
 
     assert_eq!(expr("Integer"), inferred_u);
 
@@ -583,8 +398,8 @@ fn test_infer_during_candidate_collection() {
         ..Default::default()
     });
 
-    let inferred_u = TypeExpr::TypeParameter(LocalParamID::from("U"), true)
-        .normalize(scopes.get(&NodeIndex::from(1)).unwrap());
+    let inferred_u =
+        TypeExpr::TypeParameter(LocalParamID::from("U"), true).normalize(scopes.get(&NodeIndex::from(1)).unwrap());
 
     assert_eq!(expr("T"), inferred_u);
 }
@@ -594,19 +409,11 @@ fn test_infer_during_candidate_collection() {
 #[test]
 fn test_infer_from_generic_varg() {
     let engine = graph(
-        vec![
-            sig_u("() -> ((Integer, Integer) -> ())"),
-            sig_u("<T>((Integer, ...T) -> ()) -> ()"),
-        ],
+        vec![sig_u("() -> ((Integer, Integer) -> ())"), sig_u("<T>((Integer, ...T) -> ()) -> ()")],
         vec![(0, 1, 0, 0)],
     );
     let scopes = engine.infer(InferenceConfig::default());
-    let inferred_t = scopes
-        .get(&NodeIndex::new(1))
-        .unwrap()
-        .lookup_inferred(&LocalParamID::from("T"))
-        .unwrap()
-        .0;
+    let inferred_t = scopes.get(&NodeIndex::new(1)).unwrap().lookup_inferred(&LocalParamID::from("T")).unwrap().0;
     assert_eq!(expr("Integer"), inferred_t);
 }
 
@@ -619,10 +426,7 @@ fn test_infer_from_generic_varg() {
 #[test]
 pub fn test_validate_invalid_bounds_dont_infer_generic() {
     let engine = graph(
-        vec![
-            sig_u("() -> (Integer, String)"),
-            sig_u("<T, U extends T>(T, U) -> ()"),
-        ],
+        vec![sig_u("() -> (Integer, String)"), sig_u("<T, U extends T>(T, U) -> ()")],
         vec![(0, 1, 0, 0), (0, 1, 1, 1)],
     );
     let scopes = engine.infer(InferenceConfig::default());

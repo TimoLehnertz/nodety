@@ -26,9 +26,7 @@ where
     T::Operator: MaybeArbitraryOperator<T>,
 {
     fn default() -> Self {
-        Self {
-            expr_strat: any::<TypeExpr<T>>().boxed(),
-        }
+        Self { expr_strat: any::<TypeExpr<T>>().boxed() }
     }
 }
 
@@ -90,59 +88,33 @@ where
                 16, // Each collection is up to 16 elements long
                 |element| {
                     let recursive_cases = prop_oneof![
-                        (
-                            any::<T>(),
-                            "[A-Z]",
-                            "[A-Z]",
-                            element.clone(),
-                            element.clone()
-                        )
-                            .prop_map(|(inner, a_ident, b_ident, a, b)| {
+                        (any::<T>(), "[A-Z]", "[A-Z]", element.clone(), element.clone()).prop_map(
+                            |(inner, a_ident, b_ident, a, b)| {
                                 TypeExpr::Constructor {
                                     inner,
-                                    parameters: [
-                                        (a_ident.to_string(), a),
-                                        (b_ident.to_string(), b),
-                                    ]
-                                    .into(),
+                                    parameters: [(a_ident.to_string(), a), (b_ident.to_string(), b)].into(),
                                 }
-                            }),
-                        element
-                            .clone()
-                            .prop_map(|expr| TypeExpr::KeyOf(Box::new(expr))),
-                        (element.clone(), element.clone()).prop_map(|(expr, index)| {
-                            TypeExpr::Index {
-                                expr: Box::new(expr),
-                                index: Box::new(index),
                             }
+                        ),
+                        element.clone().prop_map(|expr| TypeExpr::KeyOf(Box::new(expr))),
+                        (element.clone(), element.clone()).prop_map(|(expr, index)| {
+                            TypeExpr::Index { expr: Box::new(expr), index: Box::new(index) }
                         }),
-                        (element.clone(), element.clone())
-                            .prop_map(|(a, b)| TypeExpr::Union(Box::new(a), Box::new(b))),
+                        (element.clone(), element.clone()).prop_map(|(a, b)| TypeExpr::Union(Box::new(a), Box::new(b))),
                         (element.clone(), element.clone())
                             .prop_map(|(a, b)| TypeExpr::Intersection(Box::new(a), Box::new(b))),
-                        (element.clone(), element.clone())
-                            .prop_map(|(a, b)| TypeExpr::Union(Box::new(a), Box::new(b))),
-                        (
-                            element.clone(),
-                            element.clone(),
-                            element.clone(),
-                            element.clone()
-                        )
-                            .prop_map(
-                                |(t_test, t_test_bound, t_then, t_else)| TypeExpr::Conditional(
-                                    Box::new(Conditional {
-                                        t_test,
-                                        t_test_bound,
-                                        t_then,
-                                        t_else,
-                                        infer: HashSet::new(),
-                                    })
-                                ),
-                            ),
-                        any_with::<NodeSignature<T>>(ArbitraryExprParams {
-                            expr_strat: element.clone()
-                        })
-                        .prop_map(|signature| TypeExpr::NodeSignature(Box::new(signature))),
+                        (element.clone(), element.clone()).prop_map(|(a, b)| TypeExpr::Union(Box::new(a), Box::new(b))),
+                        (element.clone(), element.clone(), element.clone(), element.clone()).prop_map(
+                            |(t_test, t_test_bound, t_then, t_else)| TypeExpr::Conditional(Box::new(Conditional {
+                                t_test,
+                                t_test_bound,
+                                t_then,
+                                t_else,
+                                infer: HashSet::new(),
+                            })),
+                        ),
+                        any_with::<NodeSignature<T>>(ArbitraryExprParams { expr_strat: element.clone() })
+                            .prop_map(|signature| TypeExpr::NodeSignature(Box::new(signature))),
                     ];
 
                     match T::Operator::operator_strategy() {
@@ -175,10 +147,7 @@ where
     type Parameters = ArbitraryExprParams<T>;
 
     fn arbitrary_with(ArbitraryExprParams { expr_strat }: Self::Parameters) -> Self::Strategy {
-        (
-            proptest::collection::vec(expr_strat.clone(), 0..2),
-            proptest::option::of(expr_strat),
-        )
+        (proptest::collection::vec(expr_strat.clone(), 0..2), proptest::option::of(expr_strat))
             .prop_map(|(ports, varg)| PortTypes { ports, varg })
             .boxed()
     }
@@ -202,29 +171,21 @@ where
 
         (
             // parameters
-            btree_map(
-                (0..10u32).prop_map(LocalParamID),
-                any_with::<TypeParameter<T>>(params.clone()),
-                0..3,
-            ),
+            btree_map((0..10u32).prop_map(LocalParamID), any_with::<TypeParameter<T>>(params.clone()), 0..3),
             ports_strategy.clone(),                                // inputs
             ports_strategy.clone(),                                // outputs
             btree_map(0..5usize, params.expr_strat.clone(), 0..3), // default_input_types
             any::<Option<HashSet<u32>>>(),                         // tags
             any::<HashSet<u32>>(),                                 // required_tags
         )
-            .prop_map(
-                |(parameters, inputs, outputs, default_input_types, tags, required_tags)| {
-                    NodeSignature {
-                        parameters,
-                        inputs,
-                        outputs,
-                        default_input_types,
-                        tags,
-                        required_tags,
-                    }
-                },
-            )
+            .prop_map(|(parameters, inputs, outputs, default_input_types, tags, required_tags)| NodeSignature {
+                parameters,
+                inputs,
+                outputs,
+                default_input_types,
+                tags,
+                required_tags,
+            })
             .boxed()
     }
 }
@@ -245,10 +206,7 @@ where
     type Parameters = ArbitraryExprParams<T>;
 
     fn arbitrary_with(ArbitraryExprParams { expr_strat }: Self::Parameters) -> Self::Strategy {
-        (
-            proptest::option::of(expr_strat.clone()),
-            proptest::option::of(expr_strat.clone()),
-        )
+        (proptest::option::of(expr_strat.clone()), proptest::option::of(expr_strat.clone()))
             .prop_map(|(bound, default)| TypeParameter { bound, default })
             .boxed()
     }
@@ -280,15 +238,7 @@ impl Arbitrary for SIUnit {
     type Parameters = ();
     type Strategy = BoxedStrategy<SIUnit>;
     fn arbitrary_with((): Self::Parameters) -> Self::Strategy {
-        (
-            any::<i8>(),
-            any::<i8>(),
-            any::<i8>(),
-            any::<i8>(),
-            any::<i8>(),
-            any::<i8>(),
-            any::<i8>(),
-        )
+        (any::<i8>(), any::<i8>(), any::<i8>(), any::<i8>(), any::<i8>(), any::<i8>(), any::<i8>())
             .prop_map(|(s, m, kg, a, k, mol, cd)| SIUnit {
                 s: s as i16,
                 m: m as i16,
@@ -339,6 +289,5 @@ fn make_expr_valid<T: Type>(expr: TypeExpr<T>) -> TypeExpr<T> {
         },
         false,
     );
-    scoped
-        .map_scope_portals::<Unscoped>(&mut |_| unreachable!("Unscoped can't have scope portals."))
+    scoped.map_scope_portals::<Unscoped>(&mut |_| unreachable!("Unscoped can't have scope portals."))
 }

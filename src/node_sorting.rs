@@ -33,11 +33,7 @@ where
     ID: Eq + Hash + Clone,
 {
     // Create a map from id to index for quick lookup
-    let id_to_index: HashMap<ID, usize> = nodes
-        .iter()
-        .enumerate()
-        .map(|(idx, node)| (extract_id(node), idx))
-        .collect();
+    let id_to_index: HashMap<ID, usize> = nodes.iter().enumerate().map(|(idx, node)| (extract_id(node), idx)).collect();
 
     // Calculate depth for each node (also validates no cycles)
     let mut depths = Vec::with_capacity(nodes.len());
@@ -53,11 +49,7 @@ where
     }
 
     // Pair each node with its depth, then sort
-    let mut pairs: Vec<(i64, T)> = nodes
-        .drain(..)
-        .enumerate()
-        .map(|(i, node)| (depths[i] as i64, node))
-        .collect();
+    let mut pairs: Vec<(i64, T)> = nodes.drain(..).enumerate().map(|(i, node)| (depths[i] as i64, node)).collect();
 
     pairs.sort_by_key(|(depth, _)| match direction {
         SortDirection::Asc => *depth,
@@ -94,9 +86,7 @@ where
         if visited_set.contains(&current_idx) {
             // Collect all node IDs in the cycle
             visited.push(current_id);
-            return Err(NodeSortingError::CyclicParentRelation {
-                cycle_node_ids: visited,
-            });
+            return Err(NodeSortingError::CyclicParentRelation { cycle_node_ids: visited });
         }
 
         visited.push(current_id.clone());
@@ -130,10 +120,7 @@ mod tests {
 
     impl DemoNode {
         fn build_parent_relation(id: usize, parent: Option<usize>) -> Self {
-            Self {
-                id,
-                parent_node: parent,
-            }
+            Self { id, parent_node: parent }
         }
     }
 
@@ -145,8 +132,7 @@ mod tests {
             DemoNode::build_parent_relation(2, None),
         ];
 
-        sort_nodes_by_parent_depth(&mut nodes, SortDirection::Asc, |n| n.id, |n| n.parent_node)
-            .unwrap();
+        sort_nodes_by_parent_depth(&mut nodes, SortDirection::Asc, |n| n.id, |n| n.parent_node).unwrap();
 
         // All nodes have depth 0, order should be preserved within same depth
         assert_eq!(nodes.len(), 3);
@@ -163,8 +149,7 @@ mod tests {
             DemoNode::build_parent_relation(2, Some(1)), // depth 1
         ];
 
-        sort_nodes_by_parent_depth(&mut nodes, SortDirection::Asc, |n| n.id, |n| n.parent_node)
-            .unwrap();
+        sort_nodes_by_parent_depth(&mut nodes, SortDirection::Asc, |n| n.id, |n| n.parent_node).unwrap();
 
         assert_eq!(nodes[0].id, 1); // root first
         assert_eq!(nodes[1].id, 2); // child of root
@@ -179,8 +164,7 @@ mod tests {
             DemoNode::build_parent_relation(2, Some(1)), // depth 1
         ];
 
-        sort_nodes_by_parent_depth(&mut nodes, SortDirection::Desc, |n| n.id, |n| n.parent_node)
-            .unwrap();
+        sort_nodes_by_parent_depth(&mut nodes, SortDirection::Desc, |n| n.id, |n| n.parent_node).unwrap();
 
         assert_eq!(nodes[0].id, 3);
         assert_eq!(nodes[1].id, 2);
@@ -196,8 +180,7 @@ mod tests {
             DemoNode::build_parent_relation(3, None),    // depth 0
         ];
 
-        let result =
-            sort_nodes_by_parent_depth(&mut nodes, SortDirection::Asc, |n| n.id, |n| n.parent_node);
+        let result = sort_nodes_by_parent_depth(&mut nodes, SortDirection::Asc, |n| n.id, |n| n.parent_node);
         assert!(result.is_ok());
 
         // First two should be roots
@@ -215,8 +198,7 @@ mod tests {
             DemoNode::build_parent_relation(1, Some(1)), // self-reference
         ];
 
-        let result =
-            sort_nodes_by_parent_depth(&mut nodes, SortDirection::Asc, |n| n.id, |n| n.parent_node);
+        let result = sort_nodes_by_parent_depth(&mut nodes, SortDirection::Asc, |n| n.id, |n| n.parent_node);
         assert!(result.is_err());
 
         match result {
@@ -229,13 +211,9 @@ mod tests {
 
     #[test]
     fn test_cyclic_relation_two_nodes() {
-        let mut nodes = vec![
-            DemoNode::build_parent_relation(1, Some(2)),
-            DemoNode::build_parent_relation(2, Some(1)),
-        ];
+        let mut nodes = vec![DemoNode::build_parent_relation(1, Some(2)), DemoNode::build_parent_relation(2, Some(1))];
 
-        let result =
-            sort_nodes_by_parent_depth(&mut nodes, SortDirection::Asc, |n| n.id, |n| n.parent_node);
+        let result = sort_nodes_by_parent_depth(&mut nodes, SortDirection::Asc, |n| n.id, |n| n.parent_node);
         assert!(result.is_err());
 
         match result {
@@ -255,8 +233,7 @@ mod tests {
             DemoNode::build_parent_relation(3, Some(1)),
         ];
 
-        let result =
-            sort_nodes_by_parent_depth(&mut nodes, SortDirection::Asc, |n| n.id, |n| n.parent_node);
+        let result = sort_nodes_by_parent_depth(&mut nodes, SortDirection::Asc, |n| n.id, |n| n.parent_node);
         assert!(result.is_err());
 
         match result {
@@ -276,8 +253,7 @@ mod tests {
             DemoNode::build_parent_relation(1, Some(99)), // parent 99 doesn't exist
         ];
 
-        sort_nodes_by_parent_depth(&mut nodes, SortDirection::Asc, |n| n.id, |n| n.parent_node)
-            .unwrap();
+        sort_nodes_by_parent_depth(&mut nodes, SortDirection::Asc, |n| n.id, |n| n.parent_node).unwrap();
     }
 
     #[test]
@@ -292,8 +268,7 @@ mod tests {
             DemoNode::build_parent_relation(6, Some(4)), // depth 2
         ];
 
-        sort_nodes_by_parent_depth(&mut nodes, SortDirection::Asc, |n| n.id, |n| n.parent_node)
-            .unwrap();
+        sort_nodes_by_parent_depth(&mut nodes, SortDirection::Asc, |n| n.id, |n| n.parent_node).unwrap();
 
         // Verify sorting by depth
         let depths: Vec<usize> = nodes
@@ -303,10 +278,7 @@ mod tests {
                 let mut current_parent = node.parent_node;
                 while let Some(parent_id) = current_parent {
                     depth += 1;
-                    current_parent = nodes
-                        .iter()
-                        .find(|n| n.id == parent_id)
-                        .and_then(|n| n.parent_node);
+                    current_parent = nodes.iter().find(|n| n.id == parent_id).and_then(|n| n.parent_node);
                 }
                 depth
             })

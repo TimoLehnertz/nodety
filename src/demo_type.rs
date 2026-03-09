@@ -127,19 +127,14 @@ impl Type for DemoType {
                 DemoOperator::Multiplication,
                 TypeExpr::Type(Self::SI(b, b_scale)),
             ) => TypeExpr::Type(Self::SI(a.multiply(b), a_scale * b_scale)),
-            (
-                TypeExpr::Type(Self::SI(a, a_scale)),
-                DemoOperator::Division,
-                TypeExpr::Type(Self::SI(b, b_scale)),
-            ) => TypeExpr::Type(Self::SI(a.divide(b), a_scale / b_scale)),
+            (TypeExpr::Type(Self::SI(a, a_scale)), DemoOperator::Division, TypeExpr::Type(Self::SI(b, b_scale))) => {
+                TypeExpr::Type(Self::SI(a.divide(b), a_scale / b_scale))
+            }
             _ => TypeExpr::Never,
         }
     }
 
-    fn key_type(
-        &self,
-        fields: Option<&BTreeMap<String, ScopedTypeExpr<Self>>>,
-    ) -> ScopedTypeExpr<Self> {
+    fn key_type(&self, fields: Option<&BTreeMap<String, ScopedTypeExpr<Self>>>) -> ScopedTypeExpr<Self> {
         match (self, fields) {
             (Self::Record, Some(fields)) => {
                 let mut keys = fields.keys().cloned().collect::<Vec<String>>();
@@ -154,10 +149,7 @@ impl Type for DemoType {
                     Box::new(TypeExpr::Type(Self::String(Some(second)))),
                 );
                 while let Some(key) = keys.pop() {
-                    current = TypeExpr::Union(
-                        Box::new(current),
-                        Box::new(TypeExpr::Type(Self::String(Some(key)))),
-                    )
+                    current = TypeExpr::Union(Box::new(current), Box::new(TypeExpr::Type(Self::String(Some(key)))))
                 }
                 current
             }

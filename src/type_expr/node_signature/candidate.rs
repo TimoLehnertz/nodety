@@ -34,10 +34,7 @@ impl<T: Type> Candidate<T> {
                 // Discard all candidates that are not within the bounds of the parameter.
                 // Or that could widen an in the future.
                 candidates.retain(|c| {
-                    bound
-                        .supertype_of(&c.t, param_scope, &c.scope)
-                        .is_supertype()
-                        && !c.t.could_widen(&c.scope)
+                    bound.supertype_of(&c.t, param_scope, &c.scope).is_supertype() && !c.t.could_widen(&c.scope)
                 });
             }
         }
@@ -60,11 +57,7 @@ impl<T: Type> Candidate<T> {
                 if candidate_i == test_i {
                     continue;
                 }
-                if !candidate
-                    .t
-                    .supertype_of(&test.t, &candidate.scope, &test.scope)
-                    .is_supertype()
-                {
+                if !candidate.t.supertype_of(&test.t, &candidate.scope, &test.scope).is_supertype() {
                     supertype_of_all = false;
                     break;
                 }
@@ -86,9 +79,5 @@ fn rate_candidate<T: Type>(candidate: &Candidate<T>) -> i8 {
     if candidate.t.is_never(&candidate.scope).unwrap_or(false) {
         return -1;
     };
-    if candidate.t.contains_type_param() {
-        1
-    } else {
-        0
-    }
+    if candidate.t.contains_type_param() { 1 } else { 0 }
 }

@@ -95,10 +95,7 @@ impl FormattableType for DemoType {
         match self {
             Self::Array => {
                 write!(f, "Array")?;
-                if let Some(elements_type) = parameters
-                    .as_ref()
-                    .and_then(|params| params.get("elements_type"))
-                {
+                if let Some(elements_type) = parameters.as_ref().and_then(|params| params.get("elements_type")) {
                     write!(f, "<")?;
                     elements_type.format_type(f, false)?;
                     write!(f, ">")?;
@@ -144,10 +141,7 @@ impl FormattableType for DemoType {
         }
     }
 
-    fn format_operator(
-        operator: &<Self as Type>::Operator,
-        f: &mut fmt::Formatter<'_>,
-    ) -> fmt::Result {
+    fn format_operator(operator: &<Self as Type>::Operator, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match operator {
             DemoOperator::Multiplication => Ok(write!(f, "*")?),
             DemoOperator::Division => Ok(write!(f, "/")?),
