@@ -76,6 +76,10 @@ assert!(errors.is_empty());
 | `tsify`       | no      | TypeScript type generation (enables `wasm`)        |
 | `proptest`    | no      | `Arbitrary` impls for property testing             |
 
+## Minimum Supported Rust Version (MSRV)
+
+The MSRV is **1.85.0** (Rust edition 2024).
+
 ## Documentation
 
 See the [crate docs](https://docs.rs/nodety) for the full guide — types, scopes, notation, and more.

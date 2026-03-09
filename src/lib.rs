@@ -126,6 +126,10 @@
 //! - `wasm`: Enables wasm support. This is useful for creating a type safe ts wrapper with wasm.
 //! - `tsify`: Generates TypeScript types using Tsify. This enables creating a type safe ts wrapper with wasm.
 //!
+//! ## Minimum Supported Rust Version (MSRV)
+//!
+//! The MSRV is **1.85.0** (Rust edition 2024).
+//!
 //! ## Introduction
 //! Read this chapter first to gain an overview of the modules nodety provides.
 //!
