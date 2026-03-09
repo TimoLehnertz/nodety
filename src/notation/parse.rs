@@ -440,10 +440,6 @@ pub fn parse_type_hints<T: ParsableType, S: TypeExprScope>(
 }
 
 impl<T: ParsableType, S: TypeExprScope> NodeSignature<T, S> {
-    pub fn parse(input: &str) -> IResult<&str, Self> {
-        parse_node_signature(input)
-    }
-
     /// Parse the entire input as a node signature. Returns an error if parsing fails
     /// or if any input remains after parsing.
     pub fn try_parse(input: &str) -> Result<Self, ParseError> {
@@ -465,10 +461,6 @@ impl<T: ParsableType, S: TypeExprScope> NodeSignature<T, S> {
 }
 
 impl<T: ParsableType, S: TypeExprScope> TypeExpr<T, S> {
-    pub fn parse(input: &str) -> IResult<&str, Self> {
-        parse_type_expr(input)
-    }
-
     /// Parse the entire input as a type expression. Returns an error if parsing fails
     /// or if any input remains after parsing.
     pub fn try_parse(input: &str) -> Result<Self, ParseError> {
