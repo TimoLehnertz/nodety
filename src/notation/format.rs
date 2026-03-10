@@ -1,5 +1,6 @@
 use crate::{
     demo_type::{DemoOperator, DemoType},
+    nodety::node::TypeHints,
     scope::{LocalParamID, type_parameter::TypeParameter},
     r#type::Type,
     type_expr::{
@@ -297,6 +298,30 @@ impl<T: FormattableType> std::fmt::Display for TypeExpr<T> {
 impl<T: FormattableType> std::fmt::Display for NodeSignature<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.format_type_notation(f)
+    }
+}
+
+/// Formats type hints to notation (e.g. `T = Integer, U = String`).
+pub fn format_type_hints<T: FormattableType>(
+    hints: &TypeHints<T, Unscoped>,
+    f: &mut std::fmt::Formatter<'_>,
+) -> fmt::Result {
+    let mut first = true;
+    for (param_id, expr) in hints.iter() {
+        if !first {
+            write!(f, ", ")?;
+        }
+        format_type_param(*param_id, f)?;
+        write!(f, " = ")?;
+        expr.format_type(f, false)?;
+        first = false;
+    }
+    Ok(())
+}
+
+impl<T: FormattableType> std::fmt::Display for TypeHints<T, Unscoped> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        format_type_hints(self, f)
     }
 }
 

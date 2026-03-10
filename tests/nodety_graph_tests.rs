@@ -180,7 +180,7 @@ fn test_node_with_type_hints() {
         LocalParamID::from('T') => TypeExpr::Type(DemoType::Integer)
     };
     let node = node.with_type_hints(hints.clone());
-    assert_eq!(node.type_hints, hints);
+    assert_eq!(node.type_hints, hints.into());
 }
 
 #[test]

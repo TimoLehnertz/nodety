@@ -9,6 +9,7 @@
 use crate::type_expr::ScopedTypeExpr;
 use crate::{
     demo_type::{DemoOperator, DemoType, SIUnit},
+    nodety::node::TypeHints,
     scope::{LocalParamID, Scope, type_parameter::TypeParameter},
     r#type::Type,
     type_expr::{
@@ -425,28 +426,10 @@ pub fn parse_quoted_string(input: &str) -> IResult<&str, String> {
     .parse(input)
 }
 
-/// Type hints are not part of the notation.
-/// However this function can be useful to parse them separately.
-///
-/// Example:
-/// ```
-/// # use maplit::btreemap;
-/// # use nodety::{notation::parse::parse_type_hints, type_expr::{TypeExpr, Unscoped}};
-/// # use nodety::demo_type::DemoType;
-/// let (_, hints) = parse_type_hints::<DemoType, Unscoped>("T = Integer, U = String").unwrap();
-/// let expected = btreemap! {"T".into() => TypeExpr::Type(DemoType::Integer), "U".into() => TypeExpr::Type(DemoType::String(None))};
-/// assert_eq!(hints, expected);
-/// ```
-pub fn parse_type_hints<T: ParsableType, S: TypeExprScope>(
-    s: &str,
-) -> IResult<&str, BTreeMap<LocalParamID, TypeExpr<T, S>>> {
+/// Parses type hints (e.g. `T = Integer, U = String`). Used internally by [`TypeHints::try_parse`].
+fn parse_type_hints<T: ParsableType, S: TypeExprScope>(s: &str) -> IResult<&str, TypeHints<T, S>> {
     separated_list0(ws0(char(',')), (parse_type_parameter, ws0(char('=')), parse_type_expr))
-        .map(|items| {
-            items
-                .into_iter()
-                .map(|((param, _infer), _, hint)| (param, hint))
-                .collect::<BTreeMap<LocalParamID, TypeExpr<T, S>>>()
-        })
+        .map(|items| items.into_iter().map(|((param, _infer), _, hint)| (param, hint)).collect::<TypeHints<T, S>>())
         .parse(s)
 }
 
@@ -583,7 +566,34 @@ impl<T: ParsableType, S: TypeExprScope> FromStr for TypeParameters<T, S> {
     }
 }
 
+impl<T: ParsableType, S: TypeExprScope> TypeHints<T, S> {
+    /// Parse the entire input as type hints. Returns an error if parsing fails
+    /// or if any input remains after parsing.
+    pub fn try_parse(input: &str) -> Result<Self, ParseError> {
+        match parse_type_hints::<T, S>(input) {
+            Ok((rest, hints)) => {
+                if rest.trim().is_empty() {
+                    Ok(hints)
+                } else {
+                    Err(ParseError {
+                        message: format!("unexpected remaining input: {:?}", rest),
+                        remaining: rest.to_string(),
+                        offset: input.len() - rest.len(),
+                    })
+                }
+            }
+            Err(e) => Err(ParseError::from_nom_err(input, e)),
+        }
+    }
+}
 
+impl<T: ParsableType, S: TypeExprScope> FromStr for TypeHints<T, S> {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        TypeHints::try_parse(s)
+    }
+}
 
 /// Shorthand for tests.
 #[cfg(test)]

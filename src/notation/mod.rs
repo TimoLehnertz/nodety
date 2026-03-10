@@ -88,7 +88,7 @@
 //!
 //! ## Type Hints
 //!
-//! [`parse_type_hints`](parse::parse_type_hints) parses `T = Integer, U = String` into a map of parameter-to-type for pre-inference hints.
+//! [`TypeHints`](crate::nodety::node::TypeHints) implements `FromStr` for parsing `T = Integer, U = String` into a map of parameter-to-type for pre-inference hints.
 
 pub mod format;
 #[cfg(feature = "parser")]

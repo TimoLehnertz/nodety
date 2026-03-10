@@ -31,7 +31,6 @@ use tsify::Tsify;
 #[cfg_attr(feature = "json-schema", derive(JsonSchema))]
 #[cfg_attr(feature = "json-schema", schemars(bound = "T: JsonSchema, T::Operator: JsonSchema, S: JsonSchema"))]
 #[cfg_attr(feature = "tsify", derive(Tsify))]
-#[cfg_attr(feature = "tsify", tsify(into_wasm_abi, from_wasm_abi))]
 pub struct TypeParameters<T: Type, S: TypeExprScope = Unscoped>(pub BTreeMap<LocalParamID, TypeParameter<T, S>>);
 
 impl<T: Type, S: TypeExprScope> Deref for TypeParameters<T, S> {

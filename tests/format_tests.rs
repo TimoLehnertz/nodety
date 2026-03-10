@@ -1,6 +1,6 @@
 use crate::common::{expr_u, sig_u};
 use nodety::{
-    NodeSignature,
+    NodeSignature, TypeHints,
     demo_type::DemoType,
     scope::LocalParamID,
     type_expr::{TypeExpr, Unscoped},
@@ -138,6 +138,13 @@ fn test_format_roundtrip_complex_signature() {
     let input = "<T, U>(Array<T>, (T) -> (U)) -> (Array<U>)";
     let sig = NodeSignature::<DemoType>::from_str(input).unwrap();
     assert_eq!(input, format!("{}", sig));
+}
+
+#[test]
+fn test_format_type_hints_roundtrip() {
+    let input = "T = Integer, U = String";
+    let hints: TypeHints<DemoType, Unscoped> = input.parse().unwrap();
+    assert_eq!(input, format!("{}", hints));
 }
 
 #[test]

@@ -4,11 +4,9 @@
 //! with edges between their ports. It performs type inference and validation.
 
 use crate::{
-    scope::{LocalParamID, ScopePointer},
+    scope::ScopePointer,
     r#type::Type,
-    type_expr::{
-        ScopePortal, TypeExpr, TypeExprScope, TypeExprValidationError, Unscoped, node_signature::NodeSignature,
-    },
+    type_expr::{ScopePortal, TypeExprValidationError, Unscoped, node_signature::NodeSignature},
 };
 use petgraph::prelude::StableDiGraph;
 use petgraph::{
@@ -29,23 +27,13 @@ use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 
 pub mod inference;
+pub mod node;
 pub mod validation;
+
+pub use node::{Node, TypeHints};
 
 mod private {
     pub trait Sealed {}
-}
-
-#[cfg(feature = "serde")]
-mod node_index_serde {
-    use petgraph::graph::NodeIndex;
-    use serde::{Deserialize, Deserializer, Serialize, Serializer};
-
-    pub fn serialize<S: Serializer>(v: &Option<NodeIndex>, s: S) -> Result<S::Ok, S::Error> {
-        v.as_ref().map(|i| i.index()).serialize(s)
-    }
-    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Option<NodeIndex>, D::Error> {
-        Option::<usize>::deserialize(d).map(|o| o.map(NodeIndex::new))
-    }
 }
 
 /// An edge connecting a source output port to a target input port.
@@ -57,44 +45,6 @@ mod node_index_serde {
 pub struct Edge {
     pub source_port: usize,
     pub target_port: usize,
-}
-
-/// A node in the nodety graph.
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(
-    feature = "serde",
-    serde(bound(
-        serialize = "T: Serialize, T::Operator: Serialize, S: Serialize",
-        deserialize = "T: Deserialize<'de>, T::Operator: Deserialize<'de>, S: Deserialize<'de>"
-    ))
-)]
-#[cfg_attr(feature = "json-schema", derive(JsonSchema))]
-#[cfg_attr(feature = "json-schema", schemars(bound = "T: JsonSchema, T::Operator: JsonSchema, S: JsonSchema"))]
-#[cfg_attr(feature = "tsify", derive(Tsify))]
-#[derive(Debug, Clone)]
-pub struct Node<T: Type, S: TypeExprScope = Unscoped> {
-    pub signature: NodeSignature<T, S>,
-    /// Node index of the parent node if there is one.
-    #[cfg_attr(feature = "json-schema", schemars(with = "usize"))]
-    #[cfg_attr(feature = "serde", serde(with = "node_index_serde"))]
-    pub parent: Option<NodeIndex>,
-    /// These will get inferred directly before inferring anything else. Setting
-    /// this is required only when inference is ambiguous. Aka rusts "type annotations needed".
-    pub type_hints: BTreeMap<LocalParamID, TypeExpr<T, S>>,
-}
-
-impl<T: Type> Node<T, Unscoped> {
-    pub fn new(signature: NodeSignature<T, Unscoped>) -> Self {
-        Self { signature, parent: None, type_hints: BTreeMap::new() }
-    }
-
-    pub fn new_child(signature: NodeSignature<T, Unscoped>, parent: NodeIndex) -> Self {
-        Self { signature, parent: Some(parent), type_hints: BTreeMap::new() }
-    }
-
-    pub fn with_type_hints(self, type_hints: BTreeMap<LocalParamID, TypeExpr<T, Unscoped>>) -> Self {
-        Self { type_hints, ..self }
-    }
 }
 
 /// This could be represented by Into as well but having it in this trait
@@ -110,7 +60,7 @@ impl<T: Type> private::Sealed for NodeSignature<T, Unscoped> {}
 
 impl<T: Type> IntoNode<T> for NodeSignature<T, Unscoped> {
     fn into_node(self) -> Node<T, ScopePortal<T>> {
-        Node { signature: self.into(), parent: None, type_hints: BTreeMap::new() }
+        Node { signature: self.into(), parent: None, type_hints: TypeHints::default() }
     }
 }
 
@@ -126,7 +76,7 @@ impl<T: Type> IntoNode<T> for Node<T, Unscoped> {
 
 impl<T: Type> Default for Node<T, Unscoped> {
     fn default() -> Self {
-        Node { signature: NodeSignature::default(), parent: None, type_hints: BTreeMap::new() }
+        Node { signature: NodeSignature::default(), parent: None, type_hints: TypeHints::default() }
     }
 }
 
@@ -142,7 +92,7 @@ impl<T: Type> From<Node<T, Unscoped>> for Node<T, ScopePortal<T>> {
 
 impl<T: Type> From<NodeSignature<T, Unscoped>> for Node<T, ScopePortal<T>> {
     fn from(sig: NodeSignature<T, Unscoped>) -> Self {
-        Node { signature: sig.into(), parent: None, type_hints: BTreeMap::new() }
+        Node { signature: sig.into(), parent: None, type_hints: TypeHints::default() }
     }
 }
 
