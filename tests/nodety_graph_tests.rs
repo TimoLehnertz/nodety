@@ -2,8 +2,12 @@ use crate::common::{graph, sig_u};
 use assert_matches::assert_matches;
 use maplit::btreemap;
 use nodety::{
-    Node, NodeSignature, Nodety, demo_type::DemoType, inference::InferenceConfig, nodety::NodetyError,
-    scope::LocalParamID, type_expr::TypeExpr,
+    Node, NodeSignature, Nodety,
+    demo_type::DemoType,
+    inference::InferenceConfig,
+    nodety::{Edge, NodetyError},
+    scope::LocalParamID,
+    type_expr::TypeExpr,
 };
 use petgraph::graph::NodeIndex;
 
@@ -137,7 +141,7 @@ fn test_add_remove_edge() {
     let a = nodety.add_node(sig_u("() -> (Integer)")).unwrap();
     let b = nodety.add_node(sig_u("(Integer) -> ()")).unwrap();
 
-    let edge = nodety.add_edge(a, b, 0, 0);
+    let edge = nodety.add_edge(a, b, Edge { source_port: 0, target_port: 0 }).unwrap();
     assert!(nodety.remove_edge(edge).is_some());
     assert!(nodety.remove_edge(edge).is_none());
 }
@@ -147,7 +151,7 @@ fn test_to_dot() {
     let mut nodety = Nodety::<DemoType>::new();
     let a = nodety.add_node(sig_u("() -> (Integer)")).unwrap();
     let b = nodety.add_node(sig_u("(Integer) -> ()")).unwrap();
-    nodety.add_edge(a, b, 0, 0);
+    nodety.add_edge(a, b, Edge { source_port: 0, target_port: 0 }).unwrap();
 
     let dot = nodety.to_dot();
     assert!(dot.contains("digraph"), "Expected 'digraph' in DOT output: {dot}");
@@ -193,13 +197,13 @@ fn test_validate_no_errors_on_valid_graph() {
         vec![sig_u("() -> (Integer, String)"), sig_u("(Integer, String) -> ()")],
         vec![(0, 1, 0, 0), (0, 1, 1, 1)],
     );
-    let errors = engine.validate(&engine.infer(InferenceConfig::default()));
+    let errors = engine.validate(&engine.infer(&InferenceConfig::default()));
     assert!(errors.is_empty());
 }
 
 #[test]
 fn test_validate_generic_closure_with_edges() {
     let engine = graph(vec![sig_u("() -> (Array<Integer>)"), sig_u("<T>(Array<T>) -> ()")], vec![(0, 1, 0, 0)]);
-    let errors = engine.validate(&engine.infer(InferenceConfig::default()));
+    let errors = engine.validate(&engine.infer(&InferenceConfig::default()));
     assert!(errors.is_empty());
 }

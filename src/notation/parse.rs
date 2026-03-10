@@ -14,7 +14,7 @@ use crate::{
     type_expr::{
         ScopePortal, TypeExpr, TypeExprScope, Unscoped,
         conditional::Conditional,
-        node_signature::{NodeSignature, port_types::PortTypes},
+        node_signature::{NodeSignature, port_types::PortTypes, type_parameters::TypeParameters},
     },
 };
 use nom::{
@@ -32,7 +32,18 @@ use nom::{multi::fold_many0, sequence::preceded};
 use std::collections::{BTreeMap, HashSet};
 use std::str::FromStr;
 
+#[cfg(feature = "json-schema")]
+use schemars::JsonSchema;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+#[cfg(feature = "tsify")]
+use tsify::Tsify;
+
 /// Error returned when parsing a type expression or node signature fails.
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "json-schema", derive(JsonSchema))]
+#[cfg_attr(feature = "tsify", derive(Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi, from_wasm_abi))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParseError {
     /// Human-readable description of what went wrong.
@@ -230,8 +241,8 @@ fn parse_type_parameter_declaration<T: ParsableType, S: TypeExprScope>(
 
 pub fn parse_type_parameter_declarations<T: ParsableType, S: TypeExprScope>(
     input: &str,
-) -> IResult<&str, BTreeMap<LocalParamID, TypeParameter<T, S>>> {
-    (char('<'), separated_list1(ws0(char(',')), parse_type_parameter_declaration), char('>'))
+) -> IResult<&str, TypeParameters<T, S>> {
+    (char('<'), separated_list0(ws0(char(',')), parse_type_parameter_declaration), char('>'))
         .map(|(_, params, _)| params.into_iter().collect())
         .parse(input)
 }
@@ -281,7 +292,7 @@ fn parse_node_signature<T: ParsableType, S: TypeExprScope>(input: &str) -> IResu
         parse_atomic_type_expr_with_ports,
     )
         .map(|(params, _, (inputs, default_input_types), _, (outputs, _discarded_default_outputs))| NodeSignature {
-            parameters: params.unwrap_or(BTreeMap::new()),
+            parameters: params.unwrap_or_default(),
             inputs,
             outputs,
             default_input_types,
@@ -543,13 +554,36 @@ impl<T: ParsableType> FromStr for Scope<T> {
     }
 }
 
-// impl<T: ParsableType> FromStr for ScopePointer<T> {
-//     type Err = ParseError;
+impl<T: ParsableType, S: TypeExprScope> TypeParameters<T, S> {
+    /// Parse the entire input as type parameters. Returns an error if parsing fails
+    /// or if any input remains after parsing.
+    pub fn try_parse(input: &str) -> Result<Self, ParseError> {
+        match parse_type_parameter_declarations::<T, S>(input) {
+            Ok((rest, params)) => {
+                if rest.trim().is_empty() {
+                    Ok(params)
+                } else {
+                    Err(ParseError {
+                        message: format!("unexpected remaining input: {:?}", rest),
+                        remaining: rest.to_string(),
+                        offset: input.len() - rest.len(),
+                    })
+                }
+            }
+            Err(e) => Err(ParseError::from_nom_err(input, e)),
+        }
+    }
+}
 
-//     fn from_str(s: &str) -> Result<Self, Self::Err> {
-//         Scope::try_parse(s)
-//     }
-// }
+impl<T: ParsableType, S: TypeExprScope> FromStr for TypeParameters<T, S> {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        TypeParameters::try_parse(s)
+    }
+}
+
+
 
 /// Shorthand for tests.
 #[cfg(test)]
@@ -577,18 +611,7 @@ pub(crate) fn expr(input: &str) -> ScopedTypeExpr<DemoType> {
 #[cfg(test)]
 #[track_caller]
 pub(crate) fn scope(input: &str) -> Scope<DemoType> {
-    if input == "<>" {
-        return Scope::new_root();
-    }
-    let (rest, params) = parse_type_parameter_declarations::<DemoType, Unscoped>(input).unwrap();
-    if rest.len() > 0 {
-        panic!("Failed to parse scope {input}! Not everything got parsed. missing {rest}");
-    }
-    let mut scope = Scope::new_root();
-    for (param_id, param) in params {
-        scope.define(param_id, param.into());
-    }
-    scope
+    Scope::try_parse(input).expect(&format!("Failed to parse scope {input}"))
 }
 
 #[cfg(test)]

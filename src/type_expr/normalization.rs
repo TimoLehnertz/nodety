@@ -8,13 +8,12 @@ use std::collections::BTreeMap;
 impl<T: Type> TypeExpr<T, ScopePortal<T>> {
     /// Same as [normalize](Self::normalize) but for types that aren't context sensitive.
     pub fn normalize_naive(&self) -> ScopedTypeExpr<T> {
-        let scope = ScopePointer::new_root();
-        self.normalize(&scope)
+        self.normalize(&ScopePointer::new_root())
     }
 
     /// Builds a normalized version of `self`.
     ///
-    /// **Important:** The resulting type expression can differ from `self` semantically!
+    /// **Important:** The resulting expression might contain ScopePortals even if self didn't.
     pub fn normalize(&self, scope: &ScopePointer<T>) -> ScopedTypeExpr<T> {
         let (_, scope) = self.build_uninferred_child_scope(scope);
 

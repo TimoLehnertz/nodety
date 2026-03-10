@@ -1,7 +1,8 @@
 //! This module provides the functionality to determine which nodes are suitable for connecting to a certain port.
 //! It can be used to tell users which nodes they can use to connect to a certain port.
 use crate::{
-    nodety::inference::{Flow, Flows, InferenceConfig},
+    inference::infer,
+    nodety::inference::{Flow, InferenceConfig},
     scope::{Scope, ScopePointer},
     r#type::Type,
     type_expr::ScopedTypeExpr,
@@ -17,16 +18,14 @@ pub fn is_compatible<T: Type>(
     let output_scope_pointer = ScopePointer::new(output_scope);
     let input_scope_pointer = ScopePointer::new(input_scope);
 
-    let flows = Flows {
-        flows: vec![Flow {
-            source: output,
-            target: input,
-            source_scope: ScopePointer::clone(&output_scope_pointer),
-            target_scope: ScopePointer::clone(&input_scope_pointer),
-        }],
-    };
+    let flows = vec![Flow {
+        source: output,
+        target: input,
+        source_scope: ScopePointer::clone(&output_scope_pointer),
+        target_scope: ScopePointer::clone(&input_scope_pointer),
+    }];
 
-    flows.infer(InferenceConfig::default());
+    infer(flows, &InferenceConfig::default());
 
     output_scope_pointer.infer_defaults();
     input_scope_pointer.infer_defaults();

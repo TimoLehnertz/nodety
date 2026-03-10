@@ -10,7 +10,7 @@ use nodety::scope::{LocalParamID, Scope};
 use nodety::type_expr::{
     ScopePortal, TypeExpr, Unscoped,
     conditional::Conditional,
-    node_signature::{NodeSignature, port_types::PortTypes},
+    node_signature::{NodeSignature, port_types::PortTypes, type_parameters::TypeParameters},
 };
 use std::collections::{BTreeMap, HashSet};
 
@@ -359,4 +359,27 @@ fn test_parse_varg_only() {
         assert!(p.ports.is_empty());
         assert!(p.varg.is_some());
     });
+}
+
+#[test]
+fn test_parse_empty_type_parameters() {
+    let params: TypeParameters<DemoType, Unscoped> = "<>".parse().unwrap();
+    assert!(params.is_empty());
+
+    let params = parse_type_parameter_declarations::<DemoType, Unscoped>("<>").unwrap().1;
+    assert!(params.is_empty());
+
+    // Node signature with explicit empty type params
+    let sig = sig("<> () -> ()");
+    assert!(sig.parameters.is_empty());
+}
+
+#[test]
+fn test_type_parameters_from_str_display_roundtrip() {
+    let params: TypeParameters<DemoType, Unscoped> = "<T, U extends Integer>".parse().unwrap();
+    assert_eq!(params.len(), 2);
+    assert_eq!(params.to_string(), "<T, U extends Integer>");
+
+    let empty: TypeParameters<DemoType, Unscoped> = "<>".parse().unwrap();
+    assert_eq!(empty.to_string(), "<>");
 }

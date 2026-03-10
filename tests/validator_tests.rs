@@ -2,7 +2,7 @@ use crate::common::{graph, sig_u};
 use assert_matches::assert_matches;
 use maplit::hashset;
 use nodety::{
-    Nodety,
+    Edge, Nodety,
     demo_type::DemoType,
     inference::{InferenceConfig, Scopes},
     validation::{ValidationError, ValidationErrorKind},
@@ -16,7 +16,7 @@ mod common;
 #[test]
 pub fn test_validate_bounds() {
     let engine = graph(vec![sig_u("() -> (Integer)"), sig_u("<T extends Comparable>(T) -> ()")], vec![(0, 1, 0, 0)]);
-    let errors = engine.validate(&engine.infer(InferenceConfig::default()));
+    let errors = engine.validate(&engine.infer(&InferenceConfig::default()));
 
     assert_eq!(errors, []);
 }
@@ -26,7 +26,7 @@ pub fn test_validate_bounds() {
 #[test]
 pub fn test_validate_invalid_bounds() {
     let engine = graph(vec![sig_u("() -> (Integer)"), sig_u("<T extends Countable>(T) -> ()")], vec![(0, 1, 0, 0)]);
-    let scopes = engine.infer(InferenceConfig::default());
+    let scopes = engine.infer(&InferenceConfig::default());
     let errors = engine.validate(&scopes);
 
     assert_matches!(errors[0], ValidationError { kind: ValidationErrorKind::InsufficientlyInferredTypes, .. });
@@ -44,19 +44,19 @@ pub fn test_validate_invalid_bounds_complex() {
         vec![sig_u("() -> (Integer, String)"), sig_u("<T, U extends T>(T, U) -> ()")],
         vec![(0, 1, 0, 0), (0, 1, 1, 1)],
     );
-    let errors = engine.validate(&engine.infer(InferenceConfig::default()));
+    let errors = engine.validate(&engine.infer(&InferenceConfig::default()));
     assert_matches!(errors[0], ValidationError { kind: ValidationErrorKind::InsufficientlyInferredTypes, .. });
 }
 
 #[test]
 pub fn test_validate_edge_directions_valid() {
     let engine = graph(vec![sig_u("() -> (Integer)"), sig_u("(Comparable) -> ()")], vec![(0, 1, 0, 0)]);
-    let errors = engine.validate(&engine.infer(InferenceConfig::default()));
+    let errors = engine.validate(&engine.infer(&InferenceConfig::default()));
     assert_eq!(errors, []);
 
     // invalid
     let engine = graph(vec![sig_u("() -> (Comparable)"), sig_u("(Integer) -> ()")], vec![(0, 1, 0, 0)]);
-    let errors = engine.validate(&engine.infer(InferenceConfig::default()));
+    let errors = engine.validate(&engine.infer(&InferenceConfig::default()));
     assert_matches!(errors[0], ValidationError { kind: ValidationErrorKind::TypeMismatch(_), .. });
 }
 
@@ -69,7 +69,7 @@ pub fn test_validate_bounds_complex() {
         vec![sig_u("() -> (Integer, Array<Integer>)"), sig_u("<T, U extends Array<T>>(T, U) -> ()")],
         vec![(0, 1, 0, 0), (0, 1, 1, 1)],
     );
-    let errors = engine.validate(&engine.infer(InferenceConfig::default()));
+    let errors = engine.validate(&engine.infer(&InferenceConfig::default()));
     assert_eq!(errors, []);
 }
 
@@ -78,7 +78,7 @@ pub fn test_validate_bounds_complex() {
 #[test]
 pub fn test_validate_identity() {
     let engine = graph(vec![sig_u("<T>() -> (T)"), sig_u("<T>(T) -> ()")], vec![(0, 1, 0, 0)]);
-    let errors = engine.validate(&engine.infer(InferenceConfig::default()));
+    let errors = engine.validate(&engine.infer(&InferenceConfig::default()));
     assert_eq!(errors, []);
 }
 
@@ -94,7 +94,7 @@ pub fn test_validate_tags() {
         ],
         vec![(0, 1, 0, 0), (1, 2, 0, 0)],
     );
-    let errors = engine.validate(&engine.infer(InferenceConfig::default()));
+    let errors = engine.validate(&engine.infer(&InferenceConfig::default()));
     assert_eq!(errors, []);
 }
 
@@ -110,7 +110,7 @@ pub fn test_invalidate_tags() {
         ],
         vec![(0, 1, 0, 0), (1, 2, 0, 0)],
     );
-    let errors = engine.validate(&engine.infer(InferenceConfig::default()));
+    let errors = engine.validate(&engine.infer(&InferenceConfig::default()));
     assert_matches!(&errors[0], ValidationError { kind: ValidationErrorKind::TagMissing(tags), .. } if tags == &hashset! {2});
 }
 
@@ -118,7 +118,7 @@ pub fn test_invalidate_tags() {
 #[test]
 pub fn test_validate_edge_missing() {
     let engine = graph(vec![sig_u("(Integer) -> ()")], vec![]);
-    let errors = engine.validate(&engine.infer(InferenceConfig::default()));
+    let errors = engine.validate(&engine.infer(&InferenceConfig::default()));
     assert_matches!(errors[0], ValidationError { kind: ValidationErrorKind::EdgeMissingOnInput, .. });
 }
 
@@ -131,7 +131,7 @@ pub fn test_valid_keyof() {
         vec![sig_u("() -> ({a: Any, b: Any}, 'a')"), sig_u("<T, U extends keyof T>(T, U) -> ()")],
         vec![(0, 1, 0, 0), (0, 1, 1, 1)],
     );
-    let errors = engine.validate(&engine.infer(InferenceConfig::default()));
+    let errors = engine.validate(&engine.infer(&InferenceConfig::default()));
     assert_eq!(errors, []);
 }
 
@@ -144,7 +144,7 @@ pub fn test_valid_keyof_union() {
         vec![sig_u("() -> ({a: Any, b: Any}, 'a'|'b')"), sig_u("<#0, #1 extends keyof #0>(#0, #1) -> ()")],
         vec![(0, 1, 0, 0), (0, 1, 1, 1)],
     );
-    let errors = engine.validate(&engine.infer(InferenceConfig::default()));
+    let errors = engine.validate(&engine.infer(&InferenceConfig::default()));
     // let scope = scopes.get(&NodeIndex::from(1)).unwrap();
 
     assert_eq!(errors, []);
@@ -159,7 +159,7 @@ pub fn test_invalid_keyof() {
         vec![sig_u("() -> ({a: Any, b: Any}, 'c')"), sig_u("<T, U extends keyof T>(T, U) -> ()")],
         vec![(0, 1, 0, 0), (0, 1, 1, 1)],
     );
-    let scopes = engine.infer(InferenceConfig::default());
+    let scopes = engine.infer(&InferenceConfig::default());
     let errors = engine.validate(&scopes);
     assert_matches!(errors[0], ValidationError { kind: ValidationErrorKind::InsufficientlyInferredTypes, .. });
 }
@@ -167,14 +167,14 @@ pub fn test_invalid_keyof() {
 #[test]
 pub fn test_invalid_type() {
     let engine = graph(vec![sig_u("() -> (Integer)"), sig_u("(String) -> ()")], vec![(0, 1, 0, 0)]);
-    let errors = engine.validate(&engine.infer(InferenceConfig::default()));
+    let errors = engine.validate(&engine.infer(&InferenceConfig::default()));
     assert_matches!(errors[0], ValidationError { kind: ValidationErrorKind::TypeMismatch(_), .. });
 }
 
 #[test]
 pub fn test_stuff() {
     let engine = graph(vec![sig_u("<T>() -> (T)"), sig_u("(Array<{a: Integer}>) -> ()")], vec![(0, 1, 0, 0)]);
-    let errors = engine.validate(&engine.infer(InferenceConfig::default()));
+    let errors = engine.validate(&engine.infer(&InferenceConfig::default()));
     assert_eq!(errors, []);
 }
 
@@ -182,7 +182,7 @@ pub fn test_stuff() {
 #[test]
 pub fn test_default_types_type() {
     let engine = graph(vec![sig_u("(String = 'str') -> ()")], vec![]);
-    let errors = engine.validate(&engine.infer(InferenceConfig::default()));
+    let errors = engine.validate(&engine.infer(&InferenceConfig::default()));
     assert_eq!(errors, []);
 }
 
@@ -192,7 +192,7 @@ fn test_validate_index_type() {
         vec![sig_u("() -> ({a: Integer}, 'b')"), sig_u("<#0, #1, #2 extends #0[#1]>(#0, #1) -> ()")],
         vec![(0, 1, 0, 0), (0, 1, 1, 1)],
     );
-    let errors = engine.validate(&engine.infer(InferenceConfig::default()));
+    let errors = engine.validate(&engine.infer(&InferenceConfig::default()));
     assert_eq!(errors, []);
 }
 
@@ -206,7 +206,7 @@ fn test_validate_intersection() {
         ],
         vec![(0, 1, 0, 0), (0, 1, 1, 1), (1, 2, 0, 0)],
     );
-    let errors = engine.validate(&engine.infer(InferenceConfig::default()));
+    let errors = engine.validate(&engine.infer(&InferenceConfig::default()));
     assert_eq!(errors, []);
 }
 
@@ -220,7 +220,7 @@ fn test_validate_intersection_invalid() {
         ],
         vec![(0, 1, 0, 0), (0, 1, 1, 1), (1, 2, 0, 0)],
     );
-    let errors = engine.validate(&engine.infer(InferenceConfig::default()));
+    let errors = engine.validate(&engine.infer(&InferenceConfig::default()));
 
     assert_matches!(errors[0], ValidationError { kind: ValidationErrorKind::InsufficientlyInferredTypes, .. });
 }
@@ -231,7 +231,7 @@ fn test_validate_non_unit() {
         vec![sig_u("() -> (Integer|Unit)"), sig_u("<T>(T) -> (T extends Unit ? Never : T)"), sig_u("(Integer) -> ()")],
         vec![(0, 1, 0, 0), (1, 2, 0, 0)],
     );
-    let errors = engine.validate(&engine.infer(InferenceConfig::default()));
+    let errors = engine.validate(&engine.infer(&InferenceConfig::default()));
     assert_eq!(errors, []);
 }
 
@@ -245,7 +245,7 @@ fn test_validate_generic_closure() {
         ],
         vec![(0, 2, 0, 0), (1, 2, 0, 1)],
     );
-    let errors = engine.validate(&engine.infer(InferenceConfig::default()));
+    let errors = engine.validate(&engine.infer(&InferenceConfig::default()));
 
     assert_eq!(errors, []);
 }
@@ -260,7 +260,7 @@ fn test_runtime_panicked() {
         ],
         vec![(0, 1, 0, 0), (1, 2, 0, 0)],
     );
-    let errors = engine.validate(&engine.infer(InferenceConfig::default()));
+    let errors = engine.validate(&engine.infer(&InferenceConfig::default()));
 
     assert_eq!(errors, []);
 }
@@ -271,10 +271,10 @@ fn test_validate_multiple_edges_on_one_input() {
     let a = nodety.add_node(sig_u("() -> (Integer)")).unwrap();
     let b = nodety.add_node(sig_u("() -> (Integer)")).unwrap();
     let c = nodety.add_node(sig_u("(Integer) -> ()")).unwrap();
-    nodety.add_edge(a, c, 0, 0);
-    nodety.add_edge(b, c, 0, 0);
+    nodety.add_edge(a, c, Edge { source_port: 0, target_port: 0 }).unwrap();
+    nodety.add_edge(b, c, Edge { source_port: 0, target_port: 0 }).unwrap();
 
-    let errors = nodety.validate(&nodety.infer(InferenceConfig::default()));
+    let errors = nodety.validate(&nodety.infer(&InferenceConfig::default()));
     assert!(errors.iter().any(|e| matches!(e.kind, ValidationErrorKind::MultipleEdgesOnOneInput)));
 }
 

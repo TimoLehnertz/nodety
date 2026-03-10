@@ -26,7 +26,7 @@ proptest! {
     ) {
         prop_assume!(sigs.len() >= 2);
         let nodety = graph(sigs, edges);
-        let scopes = nodety.infer(InferenceConfig::default());
+        let scopes = nodety.infer(&InferenceConfig::default());
         let _errors = nodety.validate(&scopes);
     }
 }

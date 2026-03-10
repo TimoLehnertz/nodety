@@ -46,10 +46,6 @@ nodety = "0.1"
 // |    (Integer) -> (String) | ------/
 // |--------------------------|
 
-use nodety::{Nodety, demo_type::DemoType, inference::InferenceConfig};
-use nodety::type_expr::node_signature::NodeSignature;
-use std::str::FromStr;
-
 let mut nodety = Nodety::<DemoType>::new();
 
 let source = "() -> (Array<Integer>)".parse::<NodeSignature<_>>().unwrap();
@@ -60,10 +56,10 @@ let src_id = nodety.add_node(source).unwrap();
 let map_id_fn = nodety.add_node(mapper).unwrap();
 let map_id = nodety.add_node(map).unwrap();
 
-nodety.add_edge(src_id, map_id, 0, 0);
-nodety.add_edge(map_id_fn, map_id, 0, 1);
+nodety.add_edge(array_source_node_id, map_node_id, Edge { source_port: 0, target_port: 0 }).unwrap();
+nodety.add_edge(mapper_node_id, map_node_id, Edge { source_port: 0, target_port: 1 }).unwrap();
 
-let inference = nodety.infer(InferenceConfig::default());
+let inference = nodety.infer(&InferenceConfig::default());
 let errors = nodety.validate(&inference);
 assert!(errors.is_empty());
 

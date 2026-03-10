@@ -1,10 +1,10 @@
 use crate::{
-    scope::type_parameter::TypeParameter,
+    scope::{ScopePointer, type_parameter::TypeParameter},
     r#type::Type,
     type_expr::{
-        ErasedScopePortal, ScopePortal, TypeExpr, TypeExprScope, Unscoped,
+        ErasedScopePortal, ScopePortal, TypeExpr, TypeExprScope, Unscoped, UnscopedTypeExpr,
         conditional::Conditional,
-        node_signature::{NodeSignature, port_types::PortTypes},
+        node_signature::{NodeSignature, port_types::PortTypes, type_parameters::TypeParameters},
     },
 };
 
@@ -61,6 +61,33 @@ impl<T: Type> From<TypeParameter<T, Unscoped>> for TypeParameter<T, ScopePortal<
 impl<T: Type> TypeParameter<T, Unscoped> {
     /// Converts an unscoped type parameter into a scoped one.
     pub fn into_scoped(self) -> TypeParameter<T, ScopePortal<T>> {
+        self.into()
+    }
+}
+
+// Type parameters
+
+impl<T: Type> From<TypeParameters<T, ScopePortal<T>>> for TypeParameters<T, ErasedScopePortal> {
+    fn from(value: TypeParameters<T, ScopePortal<T>>) -> Self {
+        value.map_scope_portals(&mut |_| ErasedScopePortal)
+    }
+}
+
+impl<T: Type> From<TypeParameters<T, Unscoped>> for TypeParameters<T, ErasedScopePortal> {
+    fn from(value: TypeParameters<T, Unscoped>) -> Self {
+        value.map_scope_portals(&mut |_| ErasedScopePortal)
+    }
+}
+
+impl<T: Type> From<TypeParameters<T, Unscoped>> for TypeParameters<T, ScopePortal<T>> {
+    fn from(value: TypeParameters<T, Unscoped>) -> Self {
+        value.map_scope_portals(&mut |never| match never {})
+    }
+}
+
+impl<T: Type> TypeParameters<T, Unscoped> {
+    /// Converts unscoped type parameters into scoped ones.
+    pub fn into_scoped(self) -> TypeParameters<T, ScopePortal<T>> {
         self.into()
     }
 }
@@ -165,14 +192,68 @@ impl<T: Type, S: TypeExprScope> TypeExpr<T, S> {
     /// Attempts to convert an expression into unscoped.
     /// Does not modify the expression in any way.
     /// # Errors
-    /// if the expression contains a [TypeExpr::ScopePortal], variant.
+    /// if the expression contains one or more [ScopePortal][TypeExpr::ScopePortal], variant.
     pub fn try_into_unscoped(self) -> Result<TypeExpr<T, Unscoped>, HasScopePortals> {
         self.try_map_scope_portals(&mut |_| Err(HasScopePortals))
     }
 }
 
-impl<T: Type, S: TypeExprScope> PortTypes<T, S> {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HasTypeParameters;
 
+impl<T: Type> TypeExpr<T, ScopePortal<T>> {
+    /// Tries to remove all scope portals from the expression, leaving behind an unscoped expression.
+    /// # Errors
+    /// When there is at least one [ScopePortal][TypeExpr::ScopePortal] whose expression contains a type parameter.
+    pub fn try_remove_scope_portals(
+        mut self,
+        scope: &ScopePointer<T>,
+    ) -> Result<UnscopedTypeExpr<T>, HasTypeParameters> {
+        let mut failed = false;
+        self.traverse_mut(
+            scope,
+            &mut |expr, _scope, _is_tl_union| {
+                if let TypeExpr::ScopePortal { scope: _, expr: inner_expr } = expr {
+                    if inner_expr.contains_type_param() {
+                        failed = true;
+                        // Quit traversal
+                        *expr = TypeExpr::Any;
+                    } else {
+                        *expr = std::mem::take(inner_expr);
+                    }
+                }
+            },
+            true,
+        );
+        if failed {
+            return Err(HasTypeParameters);
+        }
+        Ok(self.try_into_unscoped().expect("Expected no portals to remain after removing all"))
+    }
+
+    /// Replaces all type parameters in `self` by their bounds.
+    /// The bound of a param is its inferred type or its bound or Any if neither is set.
+    ///
+    /// This is unsound but useful for displaying to a user that might not know about type variables.
+    pub fn replace_vars_by_bounds(mut self, scope: &ScopePointer<T>) -> UnscopedTypeExpr<T> {
+        self.traverse_mut(
+            scope,
+            &mut |expr, scope, _is_tl_union| {
+                if let TypeExpr::TypeParameter(param, _infer) = expr {
+                    if let Some((bound, bound_scope)) = scope.lookup_bound(param) {
+                        *expr = bound.normalize(&bound_scope);
+                    } else {
+                        *expr = Self::Any;
+                    }
+                }
+            },
+            true,
+        );
+        self.try_into_unscoped().expect("Expected there to be no type params left after removing all")
+    }
+}
+
+impl<T: Type, S: TypeExprScope> PortTypes<T, S> {
     pub(crate) fn try_map_scope_portals<SO: TypeExprScope, E>(
         self,
         mapper: &mut impl FnMut(S) -> Result<SO, E>,
@@ -207,17 +288,34 @@ impl<T: Type, S: TypeExprScope> TypeParameter<T, S> {
     }
 }
 
+impl<T: Type, S: TypeExprScope> TypeParameters<T, S> {
+    pub(crate) fn try_map_scope_portals<SO: TypeExprScope, E>(
+        self,
+        mapper: &mut impl FnMut(S) -> Result<SO, E>,
+    ) -> Result<TypeParameters<T, SO>, E> {
+        self.0
+            .into_iter()
+            .map(|(k, param)| Ok((k, param.try_map_scope_portals(mapper)?)))
+            .collect::<Result<_, E>>()
+            .map(TypeParameters)
+    }
+
+    pub(crate) fn map_scope_portals<SO: TypeExprScope>(
+        self,
+        mapper: &mut impl FnMut(S) -> SO,
+    ) -> TypeParameters<T, SO> {
+        self.try_map_scope_portals::<SO, std::convert::Infallible>(&mut |s| Ok(mapper(s)))
+            .unwrap_or_else(|e| match e {})
+    }
+}
+
 impl<T: Type, S: TypeExprScope> NodeSignature<T, S> {
     pub(crate) fn try_map_scope_portals<SO: TypeExprScope, E>(
         self,
         mapper: &mut impl FnMut(S) -> Result<SO, E>,
     ) -> Result<NodeSignature<T, SO>, E> {
         Ok(NodeSignature {
-            parameters: self
-                .parameters
-                .into_iter()
-                .map(|(k, param)| Ok((k, param.try_map_scope_portals(mapper)?)))
-                .collect::<Result<_, E>>()?,
+            parameters: self.parameters.try_map_scope_portals(mapper)?,
             inputs: self.inputs.try_map_scope_portals(mapper)?,
             outputs: self.outputs.try_map_scope_portals(mapper)?,
             default_input_types: self

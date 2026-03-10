@@ -2,7 +2,10 @@ use crate::{
     demo_type::{DemoOperator, DemoType},
     scope::{LocalParamID, type_parameter::TypeParameter},
     r#type::Type,
-    type_expr::{TypeExpr, Unscoped, node_signature::NodeSignature},
+    type_expr::{
+        TypeExpr, Unscoped,
+        node_signature::{NodeSignature, type_parameters::TypeParameters},
+    },
 };
 use core::fmt;
 use std::collections::BTreeMap;
@@ -84,6 +87,12 @@ fn format_type_param(param_id: LocalParamID, f: &mut std::fmt::Formatter<'_>) ->
         write!(f, "#{}", param_id.0)?;
     }
     Ok(())
+}
+
+impl<T: FormattableType> fmt::Display for TypeParameters<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.is_empty() { write!(f, "<>") } else { format_type_params(self, f) }
+    }
 }
 
 impl FormattableType for DemoType {

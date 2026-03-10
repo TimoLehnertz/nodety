@@ -49,10 +49,6 @@ pub struct Flow<'a, T: Type> {
     pub target_scope: ScopePointer<T>,
 }
 
-pub struct Flows<'a, T: Type> {
-    pub flows: Vec<Flow<'a, T>>,
-}
-
 #[derive(Debug)]
 pub struct FlowWithMetadata<'a, T: Type> {
     pub flow: Flow<'a, T>,
@@ -60,13 +56,13 @@ pub struct FlowWithMetadata<'a, T: Type> {
     pub target_location: FlowTargetLocation,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub enum InferenceDirection {
     Forward,
     Backward,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub struct InferenceStep {
     pub direction: InferenceDirection,
     pub allow_uninferred: bool,
@@ -126,7 +122,7 @@ impl InferenceStep {
 
 pub type Scopes<T> = BTreeMap<NodeIndex, ScopePointer<T>>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct InferenceConfig<T: Type> {
     /// The steps to perform the inference. (InferenceStep::default_steps() is usually the best choice)
     pub steps: Vec<InferenceStep>,
@@ -143,89 +139,83 @@ impl<T: Type> Default for InferenceConfig<T> {
     }
 }
 
-impl<'a, T: Type> Flows<'a, T> {
-    pub fn infer(mut self, mut config: InferenceConfig<T>) {
-        for step in config.steps {
-            // Optimization:
-            // All flows that don't contain any uninferred parameters won't produce
-            // any candidates and can thus be removed in the name of efficiency.
-            self.flows.retain(|flow| {
-                flow.source.contains_uninferred(&flow.source_scope)
-                    || flow.target.contains_uninferred(&flow.target_scope)
-            });
-            loop {
-                // Candidate collection
-                let mut all_candidates = HashMap::new();
-                for flow in &self.flows {
-                    let candidates = if step.direction == InferenceDirection::Forward {
-                        flow.target.collect_candidates(
-                            flow.source,
-                            &flow.target_scope,
-                            &flow.source_scope,
-                            step.infer_candidates,
-                            step.ignore_excluded,
-                        )
-                    } else {
-                        flow.source.collect_candidates(
-                            flow.target,
-                            &flow.source_scope,
-                            &flow.target_scope,
-                            step.infer_candidates,
-                            step.ignore_excluded,
-                        )
-                    };
-                    for (global_param_id, candidate) in candidates {
-                        if let Some(restrictions) = &config.restrictions {
-                            if !restrictions.contains(&global_param_id) {
-                                continue;
-                            }
+pub fn infer<'a, T: Type>(mut flows: Vec<Flow<'a, T>>, config: &InferenceConfig<T>) {
+    let mut stop_after = config.stop_after.clone();
+    for step in &config.steps {
+        // Optimization:
+        // All flows that don't contain any uninferred parameters won't produce
+        // any candidates and can thus be removed in the name of efficiency.
+        flows.retain(|flow| {
+            flow.source.contains_uninferred(&flow.source_scope) || flow.target.contains_uninferred(&flow.target_scope)
+        });
+        loop {
+            // Candidate collection
+            let mut all_candidates = HashMap::new();
+            for flow in &flows {
+                let candidates = if step.direction == InferenceDirection::Forward {
+                    flow.target.collect_candidates(
+                        flow.source,
+                        &flow.target_scope,
+                        &flow.source_scope,
+                        step.infer_candidates,
+                        step.ignore_excluded,
+                    )
+                } else {
+                    flow.source.collect_candidates(
+                        flow.target,
+                        &flow.source_scope,
+                        &flow.target_scope,
+                        step.infer_candidates,
+                        step.ignore_excluded,
+                    )
+                };
+                for (global_param_id, candidate) in candidates {
+                    if let Some(restrictions) = &config.restrictions {
+                        if !restrictions.contains(&global_param_id) {
+                            continue;
                         }
-                        all_candidates.entry(global_param_id).or_insert_with(Vec::new).extend(candidate);
                     }
+                    all_candidates.entry(global_param_id).or_insert_with(Vec::new).extend(candidate);
                 }
-                if !step.allow_uninferred {
-                    for (_gid, candidates) in all_candidates.iter_mut() {
-                        candidates.retain(|candidate| !candidate.t.contains_uninferred(&candidate.scope));
-                    }
+            }
+            if !step.allow_uninferred {
+                for (_gid, candidates) in all_candidates.iter_mut() {
+                    candidates.retain(|candidate| !candidate.t.contains_uninferred(&candidate.scope));
                 }
-                let mut progress = false;
+            }
+            let mut progress = false;
 
-                // Candidate picking
-                for (global_id, mut candidates) in all_candidates {
-                    let Some((registered_param, param_scope)) = global_id.scope.lookup(&global_id.local_id) else {
-                        continue;
-                    };
-                    if registered_param.is_inferred() {
-                        continue;
-                    }
+            // Candidate picking
+            for (global_id, mut candidates) in all_candidates {
+                let Some((registered_param, param_scope)) = global_id.scope.lookup(&global_id.local_id) else {
+                    continue;
+                };
+                if registered_param.is_inferred() {
+                    continue;
+                }
 
-                    candidates.retain(|candidate| {
-                        !candidate.t.references(&HashSet::from([global_id.clone()]), &candidate.scope)
-                    });
-                    let Some(picked_candidate) =
-                        Candidate::pick_for_param(candidates, registered_param.parameter(), param_scope)
-                    else {
-                        continue;
-                    };
-                    if param_scope
-                        .infer(&global_id.local_id, picked_candidate.t.clone(), picked_candidate.scope)
-                        .is_ok()
-                    {
-                        // println!("inferred {:?} = {:#?}", global_id.local_id, picked_candidate.t);
-                        if let Some(stop_after) = &mut config.stop_after {
-                            stop_after.remove(&global_id);
-                            if stop_after.is_empty() {
-                                return;
-                            }
+                candidates
+                    .retain(|candidate| !candidate.t.references(&HashSet::from([global_id.clone()]), &candidate.scope));
+                let Some(picked_candidate) =
+                    Candidate::pick_for_param(candidates, registered_param.parameter(), param_scope)
+                else {
+                    continue;
+                };
+                if param_scope.infer(&global_id.local_id, picked_candidate.t.clone(), picked_candidate.scope).is_ok() {
+                    // println!("inferred {:?} = {:#?}", global_id.local_id, picked_candidate.t);
+                    if let Some(sa) = &mut stop_after {
+                        sa.remove(&global_id);
+                        if sa.is_empty() {
+                            return;
                         }
-                        progress = true;
                     }
+                    progress = true;
                 }
-                if !progress {
-                    // The current stage didn't produce any progress.
-                    // Move on to the next step.
-                    break;
-                }
+            }
+            if !progress {
+                // The current stage didn't produce any progress.
+                // Move on to the next step.
+                break;
             }
         }
     }
@@ -254,7 +244,7 @@ impl<T: Type> Nodety<T> {
     }
 
     // @todo: make this performant
-    pub(super) fn build_scopes(&self) -> BTreeMap<NodeIndex, ScopePointer<T>> {
+    pub fn build_scopes(&self) -> BTreeMap<NodeIndex, ScopePointer<T>> {
         let mut scopes: BTreeMap<NodeIndex, ScopePointer<T>> = BTreeMap::new();
 
         let mut node_references = self.program.node_references().collect::<Vec<_>>();
@@ -291,11 +281,10 @@ impl<T: Type> Nodety<T> {
     ///
     /// # Parameters
     /// - `steps`: The steps to perform the inference. (InferenceStep::default_steps() is usually the best choice)
-    pub fn infer(&self, config: InferenceConfig<T>) -> Scopes<T> {
+    pub fn infer(&self, config: &InferenceConfig<T>) -> Scopes<T> {
         let scopes = self.build_scopes();
         let flows = self.collect_flows(&scopes);
-        let flows = Flows { flows: flows.into_iter().map(|flow| flow.flow).collect() };
-        flows.infer(config);
+        infer(flows.into_iter().map(|flow| flow.flow).collect(), config);
         scopes
     }
 

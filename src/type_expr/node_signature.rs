@@ -8,7 +8,7 @@ use crate::{
     r#type::Type,
     type_expr::{
         ScopePortal, TypeExpr, TypeExprScope, TypeExprValidationError, Unscoped,
-        node_signature::port_types::PortTypes,
+        node_signature::{port_types::PortTypes, type_parameters::TypeParameters},
         subtyping::{DetailedSupertypeDiagnostics, NoSupertypeDiagnostics, SupertypeResult},
     },
 };
@@ -25,6 +25,7 @@ use tsify::Tsify;
 
 pub mod candidate;
 pub mod port_types;
+pub mod type_parameters;
 
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -42,7 +43,7 @@ pub mod port_types;
 #[cfg_attr(feature = "tsify", derive(Tsify))]
 pub struct NodeSignature<T: Type, S: TypeExprScope = Unscoped> {
     /// Generic parameters with their bounds and defaults.
-    pub parameters: BTreeMap<LocalParamID, TypeParameter<T, S>>,
+    pub parameters: TypeParameters<T, S>,
 
     /// inputs and outputs are no PortTypes because having them TypeExpr
     /// Enables one to express `() -> Never` which is the node signature
@@ -85,7 +86,7 @@ pub struct NodeSignature<T: Type, S: TypeExprScope = Unscoped> {
 impl<T: Type, S: TypeExprScope> Default for NodeSignature<T, S> {
     fn default() -> Self {
         Self {
-            parameters: BTreeMap::new(),
+            parameters: TypeParameters::default(),
             inputs: TypeExpr::PortTypes(Box::new(PortTypes::new())),
             outputs: TypeExpr::PortTypes(Box::new(PortTypes::new())),
             default_input_types: BTreeMap::new(),
@@ -162,12 +163,7 @@ impl<T: Type> NodeSignature<T, ScopePortal<T>> {
     /// Normalizes type parameters in inputs, outputs, and parameter bounds/defaults.
     pub fn normalize(&self, scope: &ScopePointer<T>) -> NodeSignature<T, ScopePortal<T>> {
         NodeSignature {
-            parameters: self
-                .parameters
-                .clone()
-                .into_iter()
-                .map(|(ident, param)| (ident, param.normalize(scope)))
-                .collect(),
+            parameters: self.parameters.iter().map(|(ident, param)| (*ident, param.normalize(scope))).collect(),
             inputs: self.inputs.normalize(scope),
             outputs: self.outputs.normalize(scope),
             ..self.clone()

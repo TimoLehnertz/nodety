@@ -63,7 +63,8 @@
 //! #     inference::InferenceConfig,
 //! #     type_expr::{node_signature::NodeSignature, TypeExpr},
 //! #     scope::LocalParamID,
-//! #     };
+//!       Edge,
+//! #  };
 //! #  use std::str::FromStr;
 //! /// Mapper Example:
 //! /// Generic mapper node that infers the source type from an input
@@ -95,11 +96,11 @@
 //!     let map_node_id = nodety.add_node(map_node).unwrap();
 //!
 //!     // Add the edges between the nodes.
-//!     nodety.add_edge(array_source_node_id, map_node_id, 0, 0);
-//!     nodety.add_edge(mapper_node_id, map_node_id, 0, 1);
+//!     nodety.add_edge(array_source_node_id, map_node_id, Edge { source_port: 0, target_port: 0 }).unwrap();
+//!     nodety.add_edge(mapper_node_id, map_node_id, Edge { source_port: 0, target_port: 1 }).unwrap();
 //!
 //!     // Perform type inference.
-//!     let inference = nodety.infer(InferenceConfig::default());
+//!     let inference = nodety.infer(&InferenceConfig::default());
 //!
 //!     // Validate the graph using the inferred types.
 //!     let errors = nodety.validate(&inference);
@@ -243,7 +244,7 @@ pub mod demo_type;
 pub mod node_sorting;
 pub mod nodety;
 pub mod nodety_cached;
-pub use nodety::{Node, Nodety, inference, validation};
+pub use nodety::*;
 pub use nodety_cached::NodetyCached;
 pub mod notation;
 pub mod scope;

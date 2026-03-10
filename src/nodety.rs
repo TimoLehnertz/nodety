@@ -10,8 +10,11 @@ use crate::{
         ScopePortal, TypeExpr, TypeExprScope, TypeExprValidationError, Unscoped, node_signature::NodeSignature,
     },
 };
-use petgraph::{dot::Dot, graph::{EdgeIndex, NodeIndex}};
 use petgraph::prelude::StableDiGraph;
+use petgraph::{
+    dot::Dot,
+    graph::{EdgeIndex, NodeIndex},
+};
 use std::{
     collections::BTreeMap,
     error::Error,
@@ -49,6 +52,7 @@ mod node_index_serde {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "json-schema", derive(JsonSchema))]
 #[cfg_attr(feature = "tsify", derive(Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi, from_wasm_abi))]
 #[derive(Debug, Clone)]
 pub struct Edge {
     pub source_port: usize,
@@ -299,14 +303,11 @@ impl<T: Type> Nodety<T> {
     }
 
     /// Adds an edge from a source output port to a target input port.
-    pub fn add_edge(
-        &mut self,
-        source: NodeIndex,
-        target: NodeIndex,
-        source_port: usize,
-        target_port: usize,
-    ) -> EdgeIndex {
-        self.program.add_edge(source, target, Edge { source_port, target_port })
+    pub fn add_edge(&mut self, source: NodeIndex, target: NodeIndex, edge: Edge) -> Result<EdgeIndex, NodetyError> {
+        if !self.program.contains_node(source) || !self.program.contains_node(target) {
+            return Err(NodetyError::NodeNotFound);
+        }
+        Ok(self.program.add_edge(source, target, edge))
     }
 
     /// Removes an edge and returns it if it existed.

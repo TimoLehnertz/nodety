@@ -9,7 +9,7 @@ use crate::{
     type_expr::{
         ScopePortal, Unscoped,
         conditional::Conditional,
-        node_signature::{port_types::PortTypes, validate_type_parameters},
+        node_signature::{port_types::PortTypes, type_parameters::TypeParameters, validate_type_parameters},
     },
 };
 use proptest::collection::btree_map;
@@ -170,8 +170,7 @@ where
         ];
 
         (
-            // parameters
-            btree_map((0..10u32).prop_map(LocalParamID), any_with::<TypeParameter<T>>(params.clone()), 0..3),
+            any_with::<TypeParameters<T>>(params.clone()),
             ports_strategy.clone(),                                // inputs
             ports_strategy.clone(),                                // outputs
             btree_map(0..5usize, params.expr_strat.clone(), 0..3), // default_input_types
@@ -195,6 +194,20 @@ impl Arbitrary for LocalParamID {
     type Parameters = ();
     fn arbitrary_with((): Self::Parameters) -> Self::Strategy {
         any::<u32>().prop_map(LocalParamID).boxed()
+    }
+}
+
+impl<T: Type + Arbitrary + 'static> Arbitrary for TypeParameters<T>
+where
+    T::Operator: MaybeArbitraryOperator<T>,
+{
+    type Strategy = BoxedStrategy<TypeParameters<T>>;
+    type Parameters = ArbitraryExprParams<T>;
+
+    fn arbitrary_with(params: Self::Parameters) -> Self::Strategy {
+        btree_map((0..10u32).prop_map(LocalParamID), any_with::<TypeParameter<T>>(params), 0..3)
+            .prop_map(TypeParameters::from)
+            .boxed()
     }
 }
 

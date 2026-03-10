@@ -1,5 +1,6 @@
 use nodety::Nodety;
 use nodety::demo_type::DemoType;
+use nodety::nodety::Edge;
 use nodety::type_expr::{ScopePortal, ScopedTypeExpr, TypeExpr, Unscoped, node_signature::NodeSignature};
 use std::str::FromStr;
 
@@ -11,7 +12,7 @@ pub fn graph(nodes: Vec<NodeSignature<DemoType>>, edges: Vec<(usize, usize, usiz
         node_ids.push(nodety.add_node(node).unwrap());
     }
     for (source, target, source_port, target_port) in edges {
-        nodety.add_edge(node_ids[source], node_ids[target], source_port, target_port);
+        nodety.add_edge(node_ids[source], node_ids[target], Edge { source_port, target_port }).unwrap();
     }
     nodety
 }
