@@ -230,7 +230,7 @@ impl<T: Type> TypeExpr<T, ScopePortal<T>> {
 
     /// Removes all scope portals from the expression, leaving behind an unscoped expression.
     /// Intended for user display.
-    /// 
+    ///
     /// # Soundness
     /// Be aware that this is an unsound operation and the semantic meaning of the type might change.
     pub fn force_remove_scope_portals(mut self) -> UnscopedTypeExpr<T> {
