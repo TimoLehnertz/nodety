@@ -49,6 +49,12 @@ pub struct ScopePortal<T: Type> {
     portal: ScopePointer<T>,
 }
 
+impl<T: Type> ScopePortal<T> {
+    pub fn new(portal: ScopePointer<T>) -> Self {
+        Self { portal }
+    }
+}
+
 impl<T: Type> PartialEq for ScopePortal<T> {
     fn eq(&self, other: &Self) -> bool {
         self.portal == other.portal
@@ -220,16 +226,6 @@ impl<T: Type> TypeExpr<T, ScopePortal<T>> {
         );
 
         res
-    }
-
-    /// Creates a union type from at least one type.
-    /// If only one type is given, returns that type.
-    pub fn from_unions(first: Self, following: Vec<Self>) -> Self {
-        let mut current = first;
-        for exp in following {
-            current = TypeExpr::Union(Box::new(current), Box::new(exp));
-        }
-        current
     }
 
     /// Collects all referenced type parameters that reference a parameter outside of self.
@@ -600,5 +596,27 @@ impl<T: Type> TypeExpr<T, ScopePortal<T>> {
             }
             expr => Cow::Borrowed(expr),
         }
+    }
+}
+
+impl<T: Type, S: TypeExprScope> TypeExpr<T, S> {
+    /// Creates a union type from at least one type.
+    /// If only one type is given, returns that type.
+    pub fn from_unions(first: Self, following: Vec<Self>) -> Self {
+        let mut current = first;
+        for exp in following {
+            current = TypeExpr::Union(Box::new(current), Box::new(exp));
+        }
+        current
+    }
+
+    /// Creates an intersection type from at least one type.
+    /// If only one type is given, returns that type.
+    pub fn from_intersections(first: Self, following: Vec<Self>) -> Self {
+        let mut current = first;
+        for exp in following {
+            current = TypeExpr::Intersection(Box::new(current), Box::new(exp));
+        }
+        current
     }
 }

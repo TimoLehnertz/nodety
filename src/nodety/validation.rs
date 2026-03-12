@@ -125,33 +125,6 @@ impl<T: Type> Nodety<T> {
         // Validate edges
         for edge in self.program.edge_references() {
             populated.insert((edge.target(), edge.weight().target_port));
-            let source_node = &self.program[edge.source()];
-            let target_node = &self.program[edge.target()];
-            let TypeExpr::PortTypes(source_ports) = &source_node.signature.outputs else {
-                errors.push(ValidationError {
-                    location: GraphLocation::Edge(edge.id().index()),
-                    kind: ValidationErrorKind::NonPortTypesIO,
-                });
-                continue;
-            };
-            let Some(source_port) = source_ports.get_port_type(edge.weight().source_port) else {
-                errors.push(ValidationError {
-                    location: GraphLocation::Edge(edge.id().index()),
-                    kind: ValidationErrorKind::EdgeHasNoSourceOutput,
-                });
-                continue;
-            };
-            // No matching input ports are ignored here!
-            let TypeExpr::PortTypes(target_ports) = &target_node.signature.inputs else {
-                errors.push(ValidationError {
-                    location: GraphLocation::Edge(edge.id().index()),
-                    kind: ValidationErrorKind::NonPortTypesIO,
-                });
-                continue;
-            };
-            let Some(target_port) = target_ports.get_port_type(edge.weight().target_port) else {
-                continue;
-            };
 
             let Some(source_scope) = scopes.get(&edge.source()) else {
                 errors.push(ValidationError {
@@ -168,8 +141,41 @@ impl<T: Type> Nodety<T> {
                 continue;
             };
 
-            match target_port.clone().into_scoped().supertype_of_detailed(
-                &source_port.clone().into_scoped(),
+            let source_node = &self.program[edge.source()];
+            let target_node = &self.program[edge.target()];
+
+            // inputs and outputs have to get normalized first in case they are type params
+
+            let source_outputs = source_node.signature.outputs.clone().into_scoped().normalize(source_scope);
+            let TypeExpr::PortTypes(source_ports) = &source_outputs else {
+                errors.push(ValidationError {
+                    location: GraphLocation::Edge(edge.id().index()),
+                    kind: ValidationErrorKind::NonPortTypesIO,
+                });
+                continue;
+            };
+            let Some(source_port) = source_ports.get_port_type(edge.weight().source_port) else {
+                errors.push(ValidationError {
+                    location: GraphLocation::Edge(edge.id().index()),
+                    kind: ValidationErrorKind::EdgeHasNoSourceOutput,
+                });
+                continue;
+            };
+            // No matching input ports are ignored here!
+            let target_ports = target_node.signature.inputs.clone().into_scoped().normalize(target_scope);
+            let TypeExpr::PortTypes(target_ports) = &target_ports else {
+                errors.push(ValidationError {
+                    location: GraphLocation::Edge(edge.id().index()),
+                    kind: ValidationErrorKind::NonPortTypesIO,
+                });
+                continue;
+            };
+            let Some(target_port) = target_ports.get_port_type(edge.weight().target_port) else {
+                continue;
+            };
+
+            match target_port.supertype_of_detailed(
+                &source_port,
                 target_scope,
                 source_scope,
             ) {
@@ -251,6 +257,7 @@ impl<T: Type> Nodety<T> {
                 }
             }
 
+            // todo: normalize inputs first
             // 2
             let TypeExpr::PortTypes(ports) = &node.signature.inputs else {
                 errors.push(ValidationError {
