@@ -15,7 +15,7 @@ mod common;
 ///                  <T>
 ///  |    int| ----- |T    |
 #[test]
-pub fn test_infer_forwards() {
+fn test_infer_forwards() {
     let engine = graph(vec![sig_u("() -> (Integer)"), sig_u("<T>(T) -> ()")], vec![(0, 1, 0, 0)]);
     let scopes = engine.infer(&InferenceConfig::default());
     let inferred_t = scopes.get(&NodeIndex::from(1)).unwrap().lookup_inferred(&LocalParamID::from("T")).unwrap();
@@ -25,7 +25,7 @@ pub fn test_infer_forwards() {
 ///       <T>
 ///  |     T| ----- |int    |
 #[test]
-pub fn test_infer_backwards() {
+fn test_infer_backwards() {
     let engine = graph(vec![sig_u("<T>() -> (T)"), sig_u("(Integer) -> ()")], vec![(0, 1, 0, 0)]);
 
     let scopes = engine.infer(&InferenceConfig::default());
@@ -37,7 +37,7 @@ pub fn test_infer_backwards() {
 ///       <T>        <T>
 ///  |     T| ----- |T    T| ----- | String     |
 #[test]
-pub fn test_infer_multiple_backwards() {
+fn test_infer_multiple_backwards() {
     let engine = graph(
         vec![sig_u("<T>() -> (T)"), sig_u("<T>(T) -> (T)"), sig_u("(String) -> ()")],
         vec![(0, 1, 0, 0), (1, 2, 0, 0)],
@@ -50,7 +50,7 @@ pub fn test_infer_multiple_backwards() {
 ///                   <T>            <T>
 ///  |  String| ----- |T    T| ----- | T   |
 #[test]
-pub fn test_infer_multiple_forwards() {
+fn test_infer_multiple_forwards() {
     let engine = graph(
         vec![sig_u("() -> (String)"), sig_u("<T>(T) -> (T)"), sig_u("<T>(T) -> ()")],
         vec![(0, 1, 0, 0), (1, 2, 0, 0)],
@@ -67,7 +67,7 @@ pub fn test_infer_multiple_forwards() {
 /// Expected result:
 /// U gets inferred to T and T does not get inferred at all because inferring it from U would create a cycle.
 #[test]
-pub fn test_infer_identity() {
+fn test_infer_identity() {
     let engine = graph(vec![sig_u("<#0>() -> (#0)"), sig_u("<#1>(#1) -> ()")], vec![(0, 1, 0, 0)]);
     let scopes = engine.infer(&InferenceConfig::default());
 
@@ -87,7 +87,7 @@ pub fn test_infer_identity() {
 /// T should infer to int
 /// U should infer to String
 #[test]
-pub fn test_infer_map() {
+fn test_infer_map() {
     let engine = graph(
         vec![sig_u("() -> (Array<Integer>, (Integer) -> (String))"), sig_u("<T, U>(Array<T>, (T) -> (U)) -> ()")],
         vec![(0, 1, 0, 0), (0, 1, 1, 1)],
@@ -107,7 +107,7 @@ pub fn test_infer_map() {
 /// Expected result:
 /// T should infer to int
 #[test]
-pub fn test_infer_record() {
+fn test_infer_record() {
     let engine = graph(vec![sig_u("() -> ({a: Integer, b: String})"), sig_u("<T>({a: T}) -> ()")], vec![(0, 1, 0, 0)]);
     let scopes = engine.infer(&InferenceConfig::default());
     let inferred_t = scopes.get(&NodeIndex::from(1)).unwrap().lookup_inferred(&LocalParamID::from("T")).unwrap();
@@ -122,7 +122,7 @@ pub fn test_infer_record() {
 /// T doesn't get inferred
 /// U gets inferred to int
 #[test]
-pub fn test_infer_record_both_sides_generic() {
+fn test_infer_record_both_sides_generic() {
     let engine = graph(vec![sig_u("<T>() -> ({a: Integer, b: T})"), sig_u("<U>({a: U}) -> ()")], vec![(0, 1, 0, 0)]);
     let scopes = engine.infer(&InferenceConfig::default());
     let inferred_t = scopes.get(&NodeIndex::from(0)).unwrap().lookup_inferred(&LocalParamID::from("T"));
@@ -143,7 +143,7 @@ pub fn test_infer_record_both_sides_generic() {
 /// U should infer to Int
 /// M should infer to Int
 #[test]
-pub fn test_infer_default_types() {
+fn test_infer_default_types() {
     let mut sig_2 = sig_u("<T, U, M>(T , U, M) -> ()");
     sig_2.default_input_types = btreemap! {
         0 => TypeExpr::Type(DemoType::Integer),
@@ -170,7 +170,7 @@ pub fn test_infer_default_types() {
 /// Expected result:
 /// T gets inferred for Int
 #[test]
-pub fn test_infer_invalid_record() {
+fn test_infer_invalid_record() {
     let engine =
         graph(vec![sig_u("() -> ({}, Integer)"), sig_u("<T>({a: T}, T) -> ()")], vec![(0, 1, 0, 0), (0, 1, 1, 1)]);
 
@@ -188,7 +188,7 @@ pub fn test_infer_invalid_record() {
 /// Expected result:
 /// T gets inferred to Comparable because that is the only common supertype.
 #[test]
-pub fn test_infer_best_common_supertype() {
+fn test_infer_best_common_supertype() {
     let engine =
         graph(vec![sig_u("() -> (Integer, Comparable)"), sig_u("<T>(T, T) -> ()")], vec![(0, 1, 0, 0), (0, 1, 1, 1)]);
     let scopes = engine.infer(&InferenceConfig::default());
@@ -260,7 +260,7 @@ fn test_infer_generic_map() {
 
 ///  |  string| ----- | int |
 #[test]
-pub fn test_infer_invalid_types() {
+fn test_infer_invalid_types() {
     let engine = graph(vec![sig_u("() -> (String)"), sig_u("(Integer) -> ()")], vec![(0, 1, 0, 0)]);
     engine.infer(&InferenceConfig::default());
 }
@@ -424,7 +424,7 @@ fn test_infer_from_generic_varg() {
 ///  |Integer| ----- |T            |
 ///  | String| ----- |U            |
 #[test]
-pub fn test_validate_invalid_bounds_dont_infer_generic() {
+fn test_validate_invalid_bounds_dont_infer_generic() {
     let engine = graph(
         vec![sig_u("() -> (Integer, String)"), sig_u("<T, U extends T>(T, U) -> ()")],
         vec![(0, 1, 0, 0), (0, 1, 1, 1)],
@@ -439,3 +439,20 @@ pub fn test_validate_invalid_bounds_dont_infer_generic() {
     let inferred_u = scope.lookup_inferred(&LocalParamID::from("U"));
     assert!(inferred_u.is_none());
 }
+
+// #[test]
+// fn test_infer_outer_signature_identity() {
+//     let mut nodety = Nodety::<DemoType>::new();
+//     let root_id = nodety.add_node(sig_u("<I, O>() -> ()")).unwrap();
+
+//     let input_node = nodety.add_node(Node::new_child(sig_u("() -> (I)"), root_id)).unwrap();
+//     let output_node = nodety.add_node(Node::new_child(sig_u("(O) -> ()"), root_id)).unwrap();
+
+//     nodety.add_edge(input_node, output_node, Edge { source_port: 0, target_port: 0 }).unwrap();
+
+//     let scopes = nodety.infer(&InferenceConfig::default());
+
+//     // let outer_sig = NodeSigna
+// }
+
+// pub fn build_outer_signature
