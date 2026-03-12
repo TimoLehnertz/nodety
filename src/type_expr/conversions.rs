@@ -228,6 +228,24 @@ impl<T: Type> TypeExpr<T, ScopePortal<T>> {
         Ok(self.try_into_unscoped().expect("Expected no portals to remain after removing all"))
     }
 
+    /// Removes all scope portals from the expression, leaving behind an unscoped expression.
+    /// Intended for user display.
+    /// 
+    /// # Soundness
+    /// Be aware that this is an unsound operation and the semantic meaning of the type might change.
+    pub fn force_remove_scope_portals(mut self) -> UnscopedTypeExpr<T> {
+        self.traverse_mut(
+            &ScopePointer::new_root(),
+            &mut |expr, _scope, _is_tl_union| {
+                if let TypeExpr::ScopePortal { scope: _, expr: inner_expr } = expr {
+                    *expr = std::mem::take(inner_expr);
+                }
+            },
+            true,
+        );
+        self.try_into_unscoped().expect("Expected no portals to remain after removing all")
+    }
+
     /// Replaces all type parameters in `self` by their bounds.
     /// The bound of a param is its inferred type or its bound or Any if neither is set.
     ///
