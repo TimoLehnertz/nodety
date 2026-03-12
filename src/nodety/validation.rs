@@ -173,7 +173,7 @@ impl<T: Type> Nodety<T> {
             };
             let Some(target_port) = target_ports.get_port_type(edge.weight().target_port) else { continue };
 
-            match target_port.supertype_of_detailed(&source_port, target_scope, source_scope) {
+            match target_port.supertype_of_detailed(source_port, target_scope, source_scope) {
                 SupertypeResult::Supertype => (),
                 SupertypeResult::Unrelated(d) => errors.push(ValidationError {
                     location: GraphLocation::Edge(edge.id().index()),
