@@ -287,13 +287,7 @@ fn parse_port_types<T: ParsableType, S: TypeExprScope>(
 }
 
 fn parse_node_signature<T: ParsableType, S: TypeExprScope>(input: &str) -> IResult<&str, NodeSignature<T, S>> {
-    (
-        opt(parse_type_parameter_declarations),
-        space0,
-        parse_sig_input_output,
-        ws0(tag("->")),
-        parse_sig_input_output,
-    )
+    (opt(parse_type_parameter_declarations), space0, parse_sig_input_output, ws0(tag("->")), parse_sig_input_output)
         .map(|(params, _, (inputs, default_input_types), _, (outputs, _discarded_default_outputs))| NodeSignature {
             parameters: params.unwrap_or_default(),
             inputs,
