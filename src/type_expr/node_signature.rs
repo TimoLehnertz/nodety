@@ -196,9 +196,7 @@ pub fn validate_type_parameters<T: Type>(
             .chain(param.default.iter())
             .flat_map(|expr| expr.collect_references_type_params().into_iter());
         for referenced in all_referenced {
-            let Some(target_idx) = ident_to_idx.get(&referenced) else {
-                continue;
-            };
+            let Some(target_idx) = ident_to_idx.get(&referenced) else { continue };
             graph.add_edge(*source_idx, *target_idx, ());
         }
     }

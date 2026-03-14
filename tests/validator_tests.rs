@@ -1,12 +1,15 @@
-use crate::common::{graph, sig_u};
+use crate::common::{expr, graph, sig_u};
 use assert_matches::assert_matches;
 use maplit::hashset;
 use nodety::{
     Edge, Nodety,
     demo_type::DemoType,
     inference::{InferenceConfig, Scopes},
+    scope::LocalParamID,
+    type_expr::TypeExpr,
     validation::{ValidationError, ValidationErrorKind},
 };
+use petgraph::graph::NodeIndex;
 use std::collections::BTreeMap;
 
 mod common;
@@ -285,4 +288,26 @@ fn test_validate_empty_scopes() {
     let errors = engine.validate(&empty_scopes);
     assert!(!errors.is_empty(), "validation with empty scopes should produce errors");
     assert!(errors.iter().any(|e| matches!(e.kind, ValidationErrorKind::InsufficientlyInferredTypes)));
+}
+
+/// Cyclic graph with generic inference.
+/// Source seeds both cycle nodes on port 0; T infers to Integer in both.
+/// (Flow collection visits the source first, so 0->1 and 0->2 are collected before the cycle.)
+#[test]
+fn test_inference_and_validation_cyclic_graph() {
+    let engine = graph(
+        vec![sig_u("() -> (Integer)"), sig_u("<T>(T, T) -> (T)"), sig_u("<T>(T, T) -> (T)")],
+        vec![(0, 1, 0, 0), (0, 2, 0, 0), (2, 1, 0, 1), (1, 2, 0, 1)],
+    );
+    let scopes = engine.infer(&InferenceConfig::default());
+    let errors = engine.validate(&scopes);
+    assert!(errors.is_empty(), "cyclic graph should infer and validate: {:?}", errors);
+
+    let inferred_t =
+        TypeExpr::TypeParameter(LocalParamID::from("T"), true).normalize(scopes.get(&NodeIndex::from(1)).unwrap());
+    assert_eq!(expr("Integer"), inferred_t, "T in cycle node A should infer to Integer");
+
+    let inferred_t_b =
+        TypeExpr::TypeParameter(LocalParamID::from("T"), true).normalize(scopes.get(&NodeIndex::from(2)).unwrap());
+    assert_eq!(expr("Integer"), inferred_t_b, "T in cycle node B should infer to Integer");
 }
